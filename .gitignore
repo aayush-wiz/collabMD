@@ -1,36 +1,55 @@
-# deps
-node_modules/
+# dependencies
+/node_modules
 
-# build
-dist/
-build/
-.next/
-out/
+# build output
+/dist
+/build
+/.next
+/out
 
 # logs
 *.log
 npm-debug.log*
 yarn-debug.log*
 yarn-error.log*
+pnpm-debug.log* # Add pnpm debug logs
 
-# env
+# environment variables
 .env
 .env.local
 .env.development.local
 .env.test.local
 .env.production.local
+.env.staging.local # Add staging environment variables
+.env.*.local # Catch all local .env files
 
-# OS
+# OS files
 .DS_Store
 Thumbs.db
+.cache/ # macOS cache directory
+*.sublime-project # Sublime Text project files
+*.sublime-workspace # Sublime Text workspace files
 
-# IDE
+# IDE specific files
 .vscode/
 .idea/
 *.swp
 *.swo
 *~
+*.iml # IntelliJ IDEA module files
+.settings/ # Eclipse settings
+
+# generated files
+coverage/ # Test coverage reports
+*.seed # Seed files
+*.tsbuildinfo # TypeScript build info files
+.babelrc.js.map # Babel sourcemaps
+.eslintcache # ESLint cache file
 
 # misc
 *.tgz
 *.tar.gz
+*.zip # Zipped archives
+.DS_Store? # More specific for macOS .DS_Store files
+.eslintignore # ESLint ignore file (if not checked into version control)
+.prettierignore # Prettier ignore file (if not checked into version control)
