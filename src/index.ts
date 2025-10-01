@@ -21,6 +21,11 @@ app.use("*", async (c, next) => {
 app.route("/auth", authRouter);
 app.route("/docs", docsRouter);
 
+app.onError((err, c) => {
+  console.error(err);
+  return c.json({ error: "Internal server error" }, 500);
+});
+
 export default {
   port: 3000,
   fetch: app.fetch,

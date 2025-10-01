@@ -30,15 +30,52 @@ export const createDocument = async (
 };
 
 export const getDocuments = async (c: Context<Env>) => {
-  const userId = c.get("jwtPayload").userId;
+  try {
+    // Extract user ID from JWT payload with validation
+    const jwtPayload = c.get("jwtPayload");
+    if (!jwtPayload || !jwtPayload.userId) {
+      return c.json({ error: "Invalid authentication payload" }, 401);
+    }
 
-  const userDocs = await db
-    .select()
-    .from(documents)
-    .where(eq(documents.ownerId, userId))
-    .orderBy(documents.createdAt);
+    const userId = jwtPayload.userId;
 
-  return c.json(userDocs);
+    // Validate userId is a valid number
+    if (typeof userId !== "number" || userId <= 0) {
+      return c.json({ error: "Invalid user ID format" }, 400);
+    }
+
+    // Fetch user's documents from database
+    const userDocs = await db
+      .select()
+      .from(documents)
+      .where(eq(documents.ownerId, userId))
+      .orderBy(documents.createdAt);
+
+    // Return empty array if no documents found (this is valid, not an error)
+    return c.json(userDocs || []);
+  } catch (error) {
+    // Log the error for debugging (in production, use proper logging service)
+    console.error("Error fetching documents:", error);
+
+    // Handle specific error types
+    if (error instanceof Error) {
+      // Database connection errors
+      if (
+        error.message.includes("ECONNREFUSED") ||
+        error.message.includes("connection")
+      ) {
+        return c.json({ error: "Database connection failed" }, 503);
+      }
+
+      // SQL query errors
+      if (error.message.includes("syntax") || error.message.includes("SQL")) {
+        return c.json({ error: "Database query error" }, 500);
+      }
+    }
+
+    // Generic error response for unexpected errors
+    return c.json({ error: "Failed to fetch documents" }, 500);
+  }
 };
 
 export const getDocument = async (c: Context<Env>) => {
