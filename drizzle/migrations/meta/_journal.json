@@ -15,6 +15,13 @@
       "when": 1759209738049,
       "tag": "0001_workable_the_spike",
       "breakpoints": true
+    },
+    {
+      "idx": 2,
+      "version": "7",
+      "when": 1759295635240,
+      "tag": "0002_shiny_whiplash",
+      "breakpoints": true
     }
   ]
 }

@@ -1,4 +1,4 @@
-import { pgTable, serial, text, timestamp } from "drizzle-orm/pg-core"; // Import Drizzle ORM types for PostgreSQL
+import { pgTable, serial, text, timestamp, integer } from "drizzle-orm/pg-core"; // Import Drizzle ORM types for PostgreSQL
 
 /**
  * Defines the 'users' table schema for a PostgreSQL database using Drizzle ORM.
@@ -37,4 +37,15 @@ export const users = pgTable("users", {
    * `.notNull()`: Ensures that this column cannot be null.
    */
   createdAt: timestamp("created_at").defaultNow().notNull(),
+});
+
+export const documents = pgTable("documents", {
+  id: serial("id").primaryKey(),
+  title: text("title").notNull(),
+  content: text("content").notNull().default(""), // Raw markdown here
+  ownerId: integer("owner_id")
+    .references(() => users.id)
+    .notNull(),
+  createdAt: timestamp("created_at").defaultNow().notNull(),
+  updatedAt: timestamp("updated_at").defaultNow().notNull(),
 });

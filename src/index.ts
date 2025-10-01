@@ -1,16 +1,27 @@
-import { Hono } from "hono"; // Import the Hono framework
-import authRouter from "./routes/auth"; // Import the authentication router
-import { Env } from "./types"; // Import the environment type definition
+import { Hono } from "hono";
+import authRouter from "./routes/auth";
+import docsRouter from "./routes/docs";
+import { Env } from "./types";
 
-// Create a new Hono application instance, specifying the environment type
 const app = new Hono<Env>();
 
-// Register the authentication router under the "/auth" path
-// This means all routes defined in authRouter will be accessible via /auth/...
-app.route("/auth", authRouter);
+// Logging middleware (keep for debugging)
+app.use("*", async (c, next) => {
+  if (c.req.method === "POST" || c.req.method === "PUT") {
+    try {
+      const body = await c.req.json();
+      console.log(`${c.req.method} ${c.req.url}:`, body);
+    } catch (err) {
+      console.error("Failed to parse JSON body:", err);
+    }
+  }
+  await next();
+});
 
-// Export the application configuration for a server (e.g., Bun, Node.js)
+app.route("/auth", authRouter);
+app.route("/docs", docsRouter);
+
 export default {
-  port: 3000, // Specify the port the server should listen on
-  fetch: app.fetch, // Export the Hono app's fetch handler to be used by the server
+  port: 3000,
+  fetch: app.fetch,
 };
