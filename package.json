@@ -1,26 +1,20 @@
 {
-  "name": "collab-md",
+  "name": "collabMD",
+  "private": true,
   "scripts": {
-    "dev": "bun run --hot src/index.ts",
-    "migrate": "drizzle-kit generate && drizzle-kit push"
-  },
-  "dependencies": {
-    "@hono/node-server": "^1.19.5",
-    "@hono/zod-validator": "^0.7.3",
-    "@neondatabase/serverless": "^1.0.1",
-    "bcryptjs": "^3.0.2",
-    "dotenv": "^17.2.2",
-    "drizzle-orm": "^0.44.5",
-    "hono": "^4.9.9",
-    "jsonwebtoken": "^9.0.2",
-    "pg": "^8.16.3",
-    "zod": "^4.1.11"
+    "build": "turbo run build",
+    "dev": "turbo run dev",
+    "lint": "turbo run lint",
+    "format": "prettier --write \"**/*.{ts,tsx,md}\"",
+    "check-types": "turbo run check-types"
   },
   "devDependencies": {
-    "@types/bun": "^1.2.23",
-    "@types/jsonwebtoken": "^9.0.10",
-    "@types/pg": "^8.15.5",
-    "drizzle-kit": "^0.31.5",
-    "tsx": "^4.20.6"
+    "prettier": "^3.6.2",
+    "turbo": "^2.6.1",
+    "typescript": "5.9.2"
+  },
+  "packageManager": "pnpm@9.0.0",
+  "engines": {
+    "node": ">=18"
   }
 }
