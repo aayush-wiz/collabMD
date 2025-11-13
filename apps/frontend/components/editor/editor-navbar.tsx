@@ -1,5 +1,6 @@
 "use client";
 
+import { useState } from "react";
 import Image from "next/image";
 import { useRouter, usePathname } from "next/navigation";
 
@@ -7,12 +8,14 @@ import { VIEW_MODES, useEditorContext } from "./editor-context";
 import { cn } from "../../lib/utils";
 import { Tooltip } from "../ui/tooltip";
 import { useTheme } from "../../providers/theme-provider";
+import { DownloadModal } from "./download-modal";
 
 export function EditorNavbar() {
-  const { viewMode, setViewMode, saveDocument, isSaving } = useEditorContext();
+  const { viewMode, setViewMode, saveDocument, isSaving, markdown, documentId } = useEditorContext();
   const { theme, toggleTheme } = useTheme();
   const router = useRouter();
   const pathname = usePathname();
+  const [isDownloadModalOpen, setIsDownloadModalOpen] = useState(false);
 
   const isEditorRoute = pathname?.startsWith("/editor");
 
@@ -272,6 +275,7 @@ export function EditorNavbar() {
           <Tooltip content="Download" delayDuration={300} side="bottom">
             <button
               type="button"
+              onClick={() => setIsDownloadModalOpen(true)}
               className="flex h-9 w-9 items-center justify-center rounded-md transition"
               style={{
                 backgroundColor: theme === "dark" ? "#2C2C2C" : "#F5F5F5",
@@ -285,7 +289,7 @@ export function EditorNavbar() {
                 e.currentTarget.style.backgroundColor =
                   theme === "dark" ? "#2C2C2C" : "#F5F5F5";
               }}
-              aria-label="Open User Profile"
+              aria-label="Download Document"
             >
               <Image
                 src="/icons/navbar/download.svg"
@@ -298,6 +302,14 @@ export function EditorNavbar() {
           </Tooltip>
         </div>
       </div>
+
+      {/* Download Modal */}
+      <DownloadModal
+        isOpen={isDownloadModalOpen}
+        onClose={() => setIsDownloadModalOpen(false)}
+        markdown={markdown}
+        documentId={documentId}
+      />
     </header>
   );
 }
