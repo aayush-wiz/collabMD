@@ -4,19 +4,29 @@ import {
   createContext,
   useContext,
   useMemo,
+  useRef,
   useState,
   type Dispatch,
+  type MutableRefObject,
   type ReactNode,
   type SetStateAction,
 } from "react";
+import { EditorView } from "@codemirror/view";
+import { undo, redo } from "@codemirror/commands";
 
 export type ViewMode = "split" | "preview" | "editor";
+export type Theme = "light" | "dark";
 
 interface EditorContextValue {
   markdown: string;
   setMarkdown: Dispatch<SetStateAction<string>>;
   viewMode: ViewMode;
   setViewMode: Dispatch<SetStateAction<ViewMode>>;
+  theme: Theme;
+  setTheme: Dispatch<SetStateAction<Theme>>;
+  editorViewRef: MutableRefObject<EditorView | null>;
+  executeAction: (actionId: string) => void;
+  insertHeading: (level: number) => void;
 }
 
 const EditorContext = createContext<EditorContextValue | null>(null);
@@ -72,6 +82,85 @@ const team = ["Lucy", "Mark", "Amy", "Brittany"];
 export function EditorProvider({ children }: { children: ReactNode }) {
   const [viewMode, setViewMode] = useState<ViewMode>("split");
   const [markdown, setMarkdown] = useState(DEFAULT_MARKDOWN);
+  const [theme, setTheme] = useState<Theme>("dark");
+  const editorViewRef = useRef<EditorView | null>(null);
+
+  const insertHeading = (level: number) => {
+    const view = editorViewRef.current;
+    if (!view) return;
+
+    const hashes = "#".repeat(level);
+    insertAtLineStart(view, `${hashes} `);
+  };
+
+  const executeAction = (actionId: string) => {
+    const view = editorViewRef.current;
+    if (!view) return;
+
+    const state = view.state;
+    const selection = state.selection.main;
+    const selectedText = state.doc.sliceString(selection.from, selection.to);
+
+    switch (actionId) {
+      case "undo":
+        undo(view);
+        break;
+      case "redo":
+        redo(view);
+        break;
+      case "bold":
+        wrapText(view, "**", "**", selectedText);
+        break;
+      case "italic":
+        wrapText(view, "*", "*", selectedText);
+        break;
+      case "underline":
+        wrapText(view, "<u>", "</u>", selectedText);
+        break;
+      case "strikethrough":
+        wrapText(view, "~~", "~~", selectedText);
+        break;
+      case "code":
+        if (selectedText.includes("\n")) {
+          wrapText(view, "```\n", "\n```", selectedText);
+        } else {
+          wrapText(view, "`", "`", selectedText);
+        }
+        break;
+      case "quote":
+        insertAtLineStart(view, "> ");
+        break;
+      case "bullet":
+        insertAtLineStart(view, "- ");
+        break;
+      case "numbered":
+        insertAtLineStart(view, "1. ");
+        break;
+      case "checkbox":
+        view.dispatch({
+          changes: { from: selection.from, insert: "- [ ] " },
+          selection: { anchor: selection.from + 6 },
+        });
+        view.focus();
+        break;
+      case "link":
+        wrapText(view, "[", "](url)", selectedText);
+        break;
+      case "image":
+        wrapText(view, "![", "](url)", selectedText);
+        break;
+      case "table":
+        insertTable(view);
+        break;
+      case "divider":
+        view.dispatch({
+          changes: { from: selection.from, insert: "---\n" },
+          selection: { anchor: selection.from + 4 },
+        });
+        view.focus();
+        break;
+    }
+  };
 
   const value = useMemo<EditorContextValue>(
     () => ({
@@ -79,13 +168,66 @@ export function EditorProvider({ children }: { children: ReactNode }) {
       setMarkdown,
       viewMode,
       setViewMode,
+      theme,
+      setTheme,
+      editorViewRef,
+      executeAction,
+      insertHeading,
     }),
-    [markdown, viewMode]
+    [markdown, viewMode, theme]
   );
 
   return (
     <EditorContext.Provider value={value}>{children}</EditorContext.Provider>
   );
+}
+
+function wrapText(
+  view: EditorView,
+  prefix: string,
+  suffix: string,
+  selectedText: string
+) {
+  const selection = view.state.selection.main;
+  const insert = selectedText
+    ? `${prefix}${selectedText}${suffix}`
+    : `${prefix}${suffix}`;
+  const cursorOffset = selectedText
+    ? prefix.length + selectedText.length + suffix.length
+    : prefix.length;
+
+  view.dispatch({
+    changes: { from: selection.from, to: selection.to, insert },
+    selection: { anchor: selection.from + cursorOffset },
+  });
+  view.focus();
+}
+
+function insertAtLineStart(view: EditorView, prefix: string) {
+  const selection = view.state.selection.main;
+  const line = view.state.doc.lineAt(selection.from);
+  const lineStart = line.from;
+
+  view.dispatch({
+    changes: { from: lineStart, insert: prefix },
+    selection: { anchor: selection.from + prefix.length },
+  });
+  view.focus();
+}
+
+function insertTable(view: EditorView) {
+  const selection = view.state.selection.main;
+  const table = `| Header 1 | Header 2 | Header 3 |
+| -------- | -------- | -------- |
+| Cell 1   | Cell 2   | Cell 3   |
+| Cell 4   | Cell 5   | Cell 6   |
+`;
+
+  view.dispatch({
+    changes: { from: selection.from, insert: table },
+    selection: { anchor: selection.from + table.length },
+  });
+  view.focus();
 }
 
 export function useEditorContext() {

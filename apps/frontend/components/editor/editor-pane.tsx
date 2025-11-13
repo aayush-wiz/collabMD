@@ -62,7 +62,7 @@ const editorTheme = EditorView.theme(
 );
 
 export function EditorPane() {
-  const { markdown, setMarkdown } = useEditorContext();
+  const { markdown, setMarkdown, editorViewRef } = useEditorContext();
 
   const extensions = useMemo(
     () => [markdownExtension(), EditorView.lineWrapping],
@@ -76,12 +76,19 @@ export function EditorPane() {
     [setMarkdown]
   );
 
+  const onCreateEditor = useCallback(
+    (view: EditorView) => {
+      editorViewRef.current = view;
+    },
+    [editorViewRef]
+  );
+
   return (
-    <section className="flex flex-1 flex-col overflow-hidden border border-slate-800 bg-slate-900/60 shadow-[0_25px_60px_-35px_rgba(15,23,42,0.95)]">
+    <section className="flex h-full flex-1 flex-col border border-slate-800 bg-slate-900/60 shadow-[0_25px_60px_-35px_rgba(15,23,42,0.95)]">
       <div className="border-b border-slate-800">
         <EditorToolbar />
       </div>
-      <div className="flex-1 overflow-hidden">
+      <div className="flex-1 overflow-y-auto">
         <CodeMirror
           value={markdown}
           height="100%"
@@ -95,6 +102,7 @@ export function EditorPane() {
             bracketMatching: true,
           }}
           onChange={handleChange}
+          onCreateEditor={onCreateEditor}
           theme={editorTheme}
         />
       </div>

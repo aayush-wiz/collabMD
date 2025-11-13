@@ -14,7 +14,7 @@ export function Workspace() {
   return (
     <div
       className={cn(
-        "flex flex-1 flex-col",
+        "flex h-full flex-1 flex-col",
         showEditor &&
           showPreview &&
           "lg:flex-row lg:[&>*]:basis-1/2 lg:[&>*]:min-w-0 lg:[&>*]:grow"

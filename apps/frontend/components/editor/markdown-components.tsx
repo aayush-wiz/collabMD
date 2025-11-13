@@ -61,35 +61,26 @@ export const markdownComponents: Components = {
       )}
     />
   ),
-  code: ({ inline, className, children, ...props }) => {
-    if (inline) {
-      return (
-        <code
-          {...props}
-          className={cn(
-            "rounded-md bg-slate-950/70 px-1.5 py-0.5 font-mono text-sm text-cyan-200",
-            className,
-          )}
-        >
-          {children}
-        </code>
-      );
-    }
-
-    return (
-      <pre className="mt-6 overflow-x-auto rounded-2xl bg-slate-950/60 p-4 shadow-inner shadow-slate-900/40">
-        <code
-          {...props}
-          className={cn(
-            "block font-mono text-sm leading-6 text-cyan-200",
-            className,
-          )}
-        >
-          {children}
-        </code>
-      </pre>
-    );
-  },
+  pre: ({ className, ...props }) => (
+    <pre
+      {...props}
+      className={cn(
+        "mt-6 overflow-x-auto rounded-2xl bg-slate-950/60 p-4 shadow-inner shadow-slate-900/40",
+        className,
+      )}
+    />
+  ),
+  code: ({ inline, className, ...props }) => (
+    <code
+      {...props}
+      className={cn(
+        inline
+          ? "rounded-md bg-slate-950/70 px-1.5 py-0.5 font-mono text-sm text-cyan-200"
+          : "block font-mono text-sm leading-6 text-cyan-200",
+        className,
+      )}
+    />
+  ),
   a: ({ className, ...props }) => (
     <a
       {...props}

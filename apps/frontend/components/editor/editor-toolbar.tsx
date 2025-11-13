@@ -1,6 +1,7 @@
 /* eslint-disable @next/next/no-img-element */
-import { useId } from "react";
+import { useId, useState, useRef, useEffect } from "react";
 import { cn } from "../../lib/utils";
+import { useEditorContext } from "./editor-context";
 
 interface ToolbarAction {
   id: string;
@@ -60,7 +61,13 @@ const INSERT_ACTIONS: ToolbarAction[] = [
   },
 ];
 
-function ToolbarButton({ action }: { action: ToolbarAction }) {
+function ToolbarButton({
+  action,
+  onClick,
+}: {
+  action: ToolbarAction;
+  onClick?: () => void;
+}) {
   const tooltipId = useId();
 
   return (
@@ -69,6 +76,7 @@ function ToolbarButton({ action }: { action: ToolbarAction }) {
         type="button"
         aria-label={action.label}
         aria-describedby={tooltipId}
+        onClick={onClick}
         className={cn(
           "flex h-9 w-9 items-center justify-center rounded-md transition",
           "bg-slate-800/50 text-slate-200 shadow-inner shadow-slate-950/30",
@@ -91,7 +99,6 @@ function ToolbarButton({ action }: { action: ToolbarAction }) {
         className={cn(
           "absolute top-full left-1/2 mt-2 -translate-x-1/2 flex-col items-center",
           "pointer-events-none",
-          // start invisible and slightly lowered; animate to visible/placed
           "opacity-0 translate-y-1",
           "group-hover:opacity-100 group-hover:translate-y-0",
           "group-focus-within:opacity-100 group-focus-within:translate-y-0",
@@ -113,26 +120,148 @@ function ToolbarButton({ action }: { action: ToolbarAction }) {
   );
 }
 
-function ToolbarActionGroup({ actions }: { actions: ToolbarAction[] }) {
+function HeadingButton({ action }: { action: ToolbarAction }) {
+  const [isOpen, setIsOpen] = useState(false);
+  const dropdownRef = useRef<HTMLDivElement>(null);
+  const { insertHeading } = useEditorContext();
+  const tooltipId = useId();
+
+  useEffect(() => {
+    function handleClickOutside(event: MouseEvent) {
+      if (
+        dropdownRef.current &&
+        !dropdownRef.current.contains(event.target as Node)
+      ) {
+        setIsOpen(false);
+      }
+    }
+
+    if (isOpen) {
+      document.addEventListener("mousedown", handleClickOutside);
+    }
+
+    return () => {
+      document.removeEventListener("mousedown", handleClickOutside);
+    };
+  }, [isOpen]);
+
+  const handleHeadingSelect = (level: number) => {
+    insertHeading(level);
+    setIsOpen(false);
+  };
+
+  return (
+    <div className="group relative flex items-center justify-center" ref={dropdownRef}>
+      <button
+        type="button"
+        aria-label={action.label}
+        aria-describedby={tooltipId}
+        onClick={() => setIsOpen(!isOpen)}
+        className={cn(
+          "flex h-9 w-9 items-center justify-center rounded-md transition",
+          "bg-slate-800/50 text-slate-200 shadow-inner shadow-slate-950/30",
+          "hover:bg-slate-700/70 hover:text-white",
+          "focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-cyan-200",
+          isOpen && "bg-slate-700/70"
+        )}
+      >
+        <img
+          src={action.iconSrc}
+          alt=""
+          className="h-4 w-4 object-contain"
+          draggable={false}
+        />
+      </button>
+
+      {/* Tooltip */}
+      {!isOpen && (
+        <div
+          id={tooltipId}
+          role="tooltip"
+          className={cn(
+            "absolute top-full left-1/2 mt-2 -translate-x-1/2 flex-col items-center",
+            "pointer-events-none",
+            "opacity-0 translate-y-1",
+            "group-hover:opacity-100 group-hover:translate-y-0",
+            "group-focus-within:opacity-100 group-focus-within:translate-y-0",
+            "transition-all duration-150 ease-out"
+          )}
+        >
+          <div
+            className="relative rounded-md bg-slate-950 px-3 py-1.5 text-[11px] font-medium text-slate-100 shadow-md shadow-black/40"
+            aria-hidden="false"
+          >
+            {action.label}
+            <span
+              className="absolute -top-1 left-1/2 h-2 w-2 -translate-x-1/2 rotate-45 bg-slate-950"
+              aria-hidden="true"
+            />
+          </div>
+        </div>
+      )}
+
+      {/* Dropdown */}
+      {isOpen && (
+        <div
+          className={cn(
+            "absolute top-full left-1/2 mt-2 -translate-x-1/2 z-50",
+            "bg-slate-900 border border-slate-700 rounded-md shadow-lg shadow-black/40",
+            "py-1 min-w-[120px]"
+          )}
+        >
+          {[1, 2, 3, 4, 5, 6].map((level) => (
+            <button
+              key={level}
+              type="button"
+              onClick={() => handleHeadingSelect(level)}
+              className="w-full px-3 py-2 text-left text-sm text-slate-200 hover:bg-slate-800 transition"
+            >
+              Heading {level}
+            </button>
+          ))}
+        </div>
+      )}
+    </div>
+  );
+}
+
+function ToolbarActionGroup({
+  actions,
+  onActionClick,
+}: {
+  actions: ToolbarAction[];
+  onActionClick: (actionId: string) => void;
+}) {
   return (
     <div className="flex items-center w-fit gap-1 bg-slate-900/60 px-1 py-1 shadow-sm shadow-slate-950/40">
-      {actions.map((action) => (
-        <ToolbarButton key={action.id} action={action} />
-      ))}
+      {actions.map((action) => {
+        if (action.id === "heading") {
+          return <HeadingButton key={action.id} action={action} />;
+        }
+        return (
+          <ToolbarButton
+            key={action.id}
+            action={action}
+            onClick={() => onActionClick(action.id)}
+          />
+        );
+      })}
     </div>
   );
 }
 
 export function EditorToolbar() {
+  const { executeAction } = useEditorContext();
+
   return (
     <div className="flex items-center justify-center gap-2 border-t border-slate-800/80 bg-slate-950/40 py-2">
-      <ToolbarActionGroup actions={GLOBAL_ACTIONS} />
+      <ToolbarActionGroup actions={GLOBAL_ACTIONS} onActionClick={executeAction} />
 
-      <ToolbarActionGroup actions={PRIMARY_ACTIONS} />
+      <ToolbarActionGroup actions={PRIMARY_ACTIONS} onActionClick={executeAction} />
 
-      <ToolbarActionGroup actions={SECONDARY_ACTIONS} />
+      <ToolbarActionGroup actions={SECONDARY_ACTIONS} onActionClick={executeAction} />
 
-      <ToolbarActionGroup actions={INSERT_ACTIONS} />
+      <ToolbarActionGroup actions={INSERT_ACTIONS} onActionClick={executeAction} />
     </div>
   );
 }
