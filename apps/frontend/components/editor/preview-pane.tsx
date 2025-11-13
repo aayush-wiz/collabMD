@@ -2,6 +2,7 @@
 
 import ReactMarkdown from "react-markdown";
 import remarkGfm from "remark-gfm";
+import rehypeRaw from "rehype-raw";
 
 import { useEditorContext } from "./editor-context";
 import { markdownComponents } from "./markdown-components";
@@ -15,6 +16,7 @@ export function PreviewPane() {
       <div className="flex-1 overflow-auto px-6 py-5">
         <ReactMarkdown
           remarkPlugins={[remarkGfm]}
+          rehypePlugins={[rehypeRaw]}
           components={markdownComponents}
         >
           {markdown}

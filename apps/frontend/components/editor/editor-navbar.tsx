@@ -81,15 +81,15 @@ export function EditorNavbar() {
         <div className="flex items-center gap-3 justify-end">
           {/* placeholder for the logo slot */}
           <div className="flex items-center gap-1 rounded-lg p-1">
-            <Tooltip content="Create new" delayDuration={0} side="bottom">
+            <Tooltip content="Add people" delayDuration={0} side="bottom">
               <button
                 type="button"
                 className="flex h-9 w-9 items-center justify-center rounded-md bg-slate-800/55 text-slate-300 transition hover:bg-slate-700/55 hover:text-white focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-emerald-300/60"
-                aria-label="Add new"
+                aria-label="Add people"
               >
                 <Image
                   src="/icons/navbar/new-project.svg"
-                  alt="New"
+                  alt="Add people"
                   width={16}
                   height={16}
                 />
@@ -127,15 +127,15 @@ export function EditorNavbar() {
                 />
               </button>
             </Tooltip>
-            <Tooltip content="Settings" delayDuration={225} side="bottom">
+            <Tooltip content="Workspace" delayDuration={225} side="bottom">
               <button
                 type="button"
                 className="flex h-9 w-9 items-center justify-center rounded-md bg-slate-800/55 text-slate-300 transition hover:bg-slate-700/55 hover:text-white"
-                aria-label="Open Settings"
+                aria-label="Open Workspace"
               >
                 <Image
-                  src="/icons/navbar/settings.svg"
-                  alt="Settings"
+                  src="/icons/navbar/home.svg"
+                  alt="Workspace"
                   width={16}
                   height={16}
                 />

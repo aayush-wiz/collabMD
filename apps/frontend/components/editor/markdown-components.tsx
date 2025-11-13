@@ -52,9 +52,10 @@ export const markdownComponents: Components = {
   li: ({ className, ...props }) => (
     <li {...props} className={cn("leading-6", className)} />
   ),
-  blockquote: ({ className, ...props }) => (
+  blockquote: ({ className, style, ...props }) => (
     <blockquote
       {...props}
+      style={style}
       className={cn(
         "mt-6 border-l-4 border-cyan-400/60 bg-slate-900/60 px-4 py-3 text-slate-200 shadow-inner shadow-cyan-400/10",
         className,
@@ -70,17 +71,20 @@ export const markdownComponents: Components = {
       )}
     />
   ),
-  code: ({ inline, className, ...props }) => (
-    <code
-      {...props}
-      className={cn(
-        inline
-          ? "rounded-md bg-slate-950/70 px-1.5 py-0.5 font-mono text-sm text-cyan-200"
-          : "block font-mono text-sm leading-6 text-cyan-200",
-        className,
-      )}
-    />
-  ),
+  code: ({ className, ...props }) => {
+    const isInline = !className?.includes("language-");
+    return (
+      <code
+        {...props}
+        className={cn(
+          isInline
+            ? "rounded-md bg-slate-950/70 px-1.5 py-0.5 font-mono text-sm text-cyan-200"
+            : "block font-mono text-sm leading-6 text-cyan-200",
+          className,
+        )}
+      />
+    );
+  },
   a: ({ className, ...props }) => (
     <a
       {...props}
@@ -92,6 +96,40 @@ export const markdownComponents: Components = {
       rel="noreferrer"
     />
   ),
+  img: ({ src, alt, className, ...props }) => {
+    // Don't render image if src is empty or is the placeholder text
+    const srcString = typeof src === "string" ? src : "";
+    if (!src || srcString === "" || srcString === "url" || srcString.trim() === "") {
+      return (
+        <span className="inline-flex items-center gap-1 px-3 py-2 rounded-md bg-slate-800/50 text-slate-400 text-sm italic border border-slate-700/50 mt-2">
+          🖼️ [Image placeholder: {alt || "Paste your image URL"}]
+        </span>
+      );
+    }
+
+    return (
+      // eslint-disable-next-line @next/next/no-img-element
+      <img
+        {...props}
+        src={srcString}
+        alt={alt || ""}
+        className={cn("max-w-full h-auto rounded-lg shadow-lg my-4 block", className)}
+        onError={(e) => {
+          const target = e.currentTarget;
+          const parent = target.parentElement;
+          if (parent && !parent.querySelector(".error-message")) {
+            target.style.display = "none";
+            const errorMsg = document.createElement("span");
+            errorMsg.className =
+              "error-message inline-flex flex-col gap-1 px-3 py-2 rounded-md bg-red-900/20 text-red-300 text-sm border border-red-700/50 my-2";
+            errorMsg.innerHTML = `<span class="flex items-center gap-2"><span>⚠️</span><span>Failed to load image</span></span><span class="text-xs text-red-400/70 break-all">${srcString}</span>`;
+            parent.appendChild(errorMsg);
+          }
+        }}
+        loading="lazy"
+      />
+    );
+  },
   table: ({ className, ...props }) => (
     <div className="mt-6 overflow-x-auto">
       <table
@@ -134,6 +172,19 @@ export const markdownComponents: Components = {
     <strong
       {...props}
       className={cn("font-semibold text-white", className)}
+    />
+  ),
+  mark: ({ className, style, ...props }) => (
+    <mark
+      {...props}
+      style={style}
+      className={cn("bg-yellow-400/30 text-slate-900 px-1 rounded font-medium", className)}
+    />
+  ),
+  sub: ({ className, ...props }) => (
+    <sub
+      {...props}
+      className={cn("text-slate-400 text-xs", className)}
     />
   ),
 };

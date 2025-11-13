@@ -18,9 +18,9 @@ const PRIMARY_ACTIONS: ToolbarAction[] = [
   { id: "bold", label: "Bold", iconSrc: "/icons/toolbar/bold.svg" },
   { id: "italic", label: "Italics", iconSrc: "/icons/toolbar/italics.svg" },
   {
-    id: "underline",
-    label: "Underline",
-    iconSrc: "/icons/toolbar/underline.svg",
+    id: "highlight",
+    label: "Highlight",
+    iconSrc: "/icons/toolbar/highlight.svg",
   },
   {
     id: "strikethrough",
@@ -52,7 +52,7 @@ const SECONDARY_ACTIONS: ToolbarAction[] = [
 
 const INSERT_ACTIONS: ToolbarAction[] = [
   { id: "link", label: "Link", iconSrc: "/icons/toolbar/link.svg" },
-  { id: "image", label: "Image", iconSrc: "/icons/toolbar/image.svg" },
+  { id: "subscript", label: "Subscript", iconSrc: "/icons/toolbar/subscript.svg" },
   { id: "table", label: "Table", iconSrc: "/icons/toolbar/table.svg" },
   {
     id: "divider",
@@ -120,6 +120,147 @@ function ToolbarButton({
   );
 }
 
+interface ColorOption {
+  name: string;
+  value: string;
+  bgClass: string;
+}
+
+const HIGHLIGHT_COLORS: ColorOption[] = [
+  { name: "Yellow", value: "#fef08a", bgClass: "bg-yellow-200" },
+  { name: "Green", value: "#bbf7d0", bgClass: "bg-green-200" },
+  { name: "Blue", value: "#bfdbfe", bgClass: "bg-blue-200" },
+  { name: "Pink", value: "#fbcfe8", bgClass: "bg-pink-200" },
+  { name: "Purple", value: "#e9d5ff", bgClass: "bg-purple-200" },
+  { name: "Orange", value: "#fed7aa", bgClass: "bg-orange-200" },
+];
+
+const QUOTE_COLORS: ColorOption[] = [
+  { name: "Cyan", value: "#22d3ee", bgClass: "bg-cyan-400" },
+  { name: "Blue", value: "#3b82f6", bgClass: "bg-blue-500" },
+  { name: "Green", value: "#10b981", bgClass: "bg-green-500" },
+  { name: "Yellow", value: "#eab308", bgClass: "bg-yellow-500" },
+  { name: "Red", value: "#ef4444", bgClass: "bg-red-500" },
+  { name: "Purple", value: "#a855f7", bgClass: "bg-purple-500" },
+];
+
+function ColorPickerButton({
+  action,
+  colors,
+}: {
+  action: ToolbarAction;
+  colors: ColorOption[];
+}) {
+  const [isOpen, setIsOpen] = useState(false);
+  const dropdownRef = useRef<HTMLDivElement>(null);
+  const { executeActionWithColor } = useEditorContext();
+  const tooltipId = useId();
+
+  useEffect(() => {
+    function handleClickOutside(event: MouseEvent) {
+      if (
+        dropdownRef.current &&
+        !dropdownRef.current.contains(event.target as Node)
+      ) {
+        setIsOpen(false);
+      }
+    }
+
+    if (isOpen) {
+      document.addEventListener("mousedown", handleClickOutside);
+    }
+
+    return () => {
+      document.removeEventListener("mousedown", handleClickOutside);
+    };
+  }, [isOpen]);
+
+  const handleColorSelect = (color: string) => {
+    executeActionWithColor(action.id, color);
+    setIsOpen(false);
+  };
+
+  return (
+    <div
+      className="group relative flex items-center justify-center"
+      ref={dropdownRef}
+    >
+      <button
+        type="button"
+        aria-label={action.label}
+        aria-describedby={tooltipId}
+        onClick={() => setIsOpen(!isOpen)}
+        className={cn(
+          "flex h-9 w-9 items-center justify-center rounded-md transition",
+          "bg-slate-800/50 text-slate-200 shadow-inner shadow-slate-950/30",
+          "hover:bg-slate-700/70 hover:text-white",
+          "focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-cyan-200",
+          isOpen && "bg-slate-700/70"
+        )}
+      >
+        <img
+          src={action.iconSrc}
+          alt=""
+          className="h-4 w-4 object-contain"
+          draggable={false}
+        />
+      </button>
+
+      {/* Tooltip */}
+      {!isOpen && (
+        <div
+          id={tooltipId}
+          role="tooltip"
+          className={cn(
+            "absolute top-full left-1/2 mt-2 -translate-x-1/2 flex-col items-center",
+            "pointer-events-none",
+            "opacity-0 translate-y-1",
+            "group-hover:opacity-100 group-hover:translate-y-0",
+            "group-focus-within:opacity-100 group-focus-within:translate-y-0",
+            "transition-all duration-150 ease-out"
+          )}
+        >
+          <div
+            className="relative rounded-md bg-slate-950 px-3 py-1.5 text-[11px] font-medium text-slate-100 shadow-md shadow-black/40"
+            aria-hidden="false"
+          >
+            {action.label}
+            <span
+              className="absolute -top-1 left-1/2 h-2 w-2 -translate-x-1/2 rotate-45 bg-slate-950"
+              aria-hidden="true"
+            />
+          </div>
+        </div>
+      )}
+
+      {/* Color Dropdown */}
+      {isOpen && (
+        <div
+          className={cn(
+            "absolute top-full left-1/2 mt-2 -translate-x-1/2 z-50",
+            "bg-slate-900 border border-slate-700 rounded-md shadow-lg shadow-black/40",
+            "p-2 grid grid-cols-3 gap-2 min-w-[150px]"
+          )}
+        >
+          {colors.map((color) => (
+            <button
+              key={color.value}
+              type="button"
+              onClick={() => handleColorSelect(color.value)}
+              className={cn(
+                "w-10 h-10 rounded-md border-2 border-slate-700 hover:border-slate-400 transition",
+                color.bgClass
+              )}
+              title={color.name}
+              aria-label={`${action.label} ${color.name}`}
+            />
+          ))}
+        </div>
+      )}
+    </div>
+  );
+}
+
 function HeadingButton({ action }: { action: ToolbarAction }) {
   const [isOpen, setIsOpen] = useState(false);
   const dropdownRef = useRef<HTMLDivElement>(null);
@@ -151,7 +292,10 @@ function HeadingButton({ action }: { action: ToolbarAction }) {
   };
 
   return (
-    <div className="group relative flex items-center justify-center" ref={dropdownRef}>
+    <div
+      className="group relative flex items-center justify-center"
+      ref={dropdownRef}
+    >
       <button
         type="button"
         aria-label={action.label}
@@ -238,6 +382,24 @@ function ToolbarActionGroup({
         if (action.id === "heading") {
           return <HeadingButton key={action.id} action={action} />;
         }
+        if (action.id === "highlight") {
+          return (
+            <ColorPickerButton
+              key={action.id}
+              action={action}
+              colors={HIGHLIGHT_COLORS}
+            />
+          );
+        }
+        if (action.id === "quote") {
+          return (
+            <ColorPickerButton
+              key={action.id}
+              action={action}
+              colors={QUOTE_COLORS}
+            />
+          );
+        }
         return (
           <ToolbarButton
             key={action.id}
@@ -255,13 +417,25 @@ export function EditorToolbar() {
 
   return (
     <div className="flex items-center justify-center gap-2 border-t border-slate-800/80 bg-slate-950/40 py-2">
-      <ToolbarActionGroup actions={GLOBAL_ACTIONS} onActionClick={executeAction} />
+      <ToolbarActionGroup
+        actions={GLOBAL_ACTIONS}
+        onActionClick={executeAction}
+      />
 
-      <ToolbarActionGroup actions={PRIMARY_ACTIONS} onActionClick={executeAction} />
+      <ToolbarActionGroup
+        actions={PRIMARY_ACTIONS}
+        onActionClick={executeAction}
+      />
 
-      <ToolbarActionGroup actions={SECONDARY_ACTIONS} onActionClick={executeAction} />
+      <ToolbarActionGroup
+        actions={SECONDARY_ACTIONS}
+        onActionClick={executeAction}
+      />
 
-      <ToolbarActionGroup actions={INSERT_ACTIONS} onActionClick={executeAction} />
+      <ToolbarActionGroup
+        actions={INSERT_ACTIONS}
+        onActionClick={executeAction}
+      />
     </div>
   );
 }

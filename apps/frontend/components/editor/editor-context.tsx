@@ -26,6 +26,7 @@ interface EditorContextValue {
   setTheme: Dispatch<SetStateAction<Theme>>;
   editorViewRef: MutableRefObject<EditorView | null>;
   executeAction: (actionId: string) => void;
+  executeActionWithColor: (actionId: string, color: string) => void;
   insertHeading: (level: number) => void;
 }
 
@@ -93,6 +94,24 @@ export function EditorProvider({ children }: { children: ReactNode }) {
     insertAtLineStart(view, `${hashes} `);
   };
 
+  const executeActionWithColor = (actionId: string, color: string) => {
+    const view = editorViewRef.current;
+    if (!view) return;
+
+    const state = view.state;
+    const selection = state.selection.main;
+    const selectedText = state.doc.sliceString(selection.from, selection.to);
+
+    switch (actionId) {
+      case "highlight":
+        wrapText(view, `<mark style="background-color: ${color};">`, "</mark>", selectedText);
+        break;
+      case "quote":
+        insertColoredQuote(view, color);
+        break;
+    }
+  };
+
   const executeAction = (actionId: string) => {
     const view = editorViewRef.current;
     if (!view) return;
@@ -114,9 +133,6 @@ export function EditorProvider({ children }: { children: ReactNode }) {
       case "italic":
         wrapText(view, "*", "*", selectedText);
         break;
-      case "underline":
-        wrapText(view, "<u>", "</u>", selectedText);
-        break;
       case "strikethrough":
         wrapText(view, "~~", "~~", selectedText);
         break;
@@ -126,9 +142,6 @@ export function EditorProvider({ children }: { children: ReactNode }) {
         } else {
           wrapText(view, "`", "`", selectedText);
         }
-        break;
-      case "quote":
-        insertAtLineStart(view, "> ");
         break;
       case "bullet":
         insertAtLineStart(view, "- ");
@@ -144,10 +157,10 @@ export function EditorProvider({ children }: { children: ReactNode }) {
         view.focus();
         break;
       case "link":
-        wrapText(view, "[", "](url)", selectedText);
+        insertLink(view, selectedText);
         break;
-      case "image":
-        wrapText(view, "![", "](url)", selectedText);
+      case "subscript":
+        wrapText(view, "<sub>", "</sub>", selectedText);
         break;
       case "table":
         insertTable(view);
@@ -172,6 +185,7 @@ export function EditorProvider({ children }: { children: ReactNode }) {
       setTheme,
       editorViewRef,
       executeAction,
+      executeActionWithColor,
       insertHeading,
     }),
     [markdown, viewMode, theme]
@@ -226,6 +240,47 @@ function insertTable(view: EditorView) {
   view.dispatch({
     changes: { from: selection.from, insert: table },
     selection: { anchor: selection.from + table.length },
+  });
+  view.focus();
+}
+
+function insertColoredQuote(view: EditorView, color: string) {
+  const selection = view.state.selection.main;
+  const line = view.state.doc.lineAt(selection.from);
+  const lineStart = line.from;
+  const lineText = line.text;
+  
+  // Check if line already starts with a blockquote marker
+  const quoteMatch = lineText.match(/^>\s*/);
+  if (quoteMatch) {
+    // Already a quote, wrap it in a colored div
+    const quoteText = lineText.slice(quoteMatch[0].length);
+    const coloredQuote = `<blockquote style="border-color: ${color};">\n${quoteText}\n</blockquote>\n`;
+    view.dispatch({
+      changes: { from: lineStart, to: line.to, insert: coloredQuote },
+      selection: { anchor: lineStart + coloredQuote.length },
+    });
+  } else {
+    // Not a quote yet, create a colored blockquote
+    const coloredQuote = `<blockquote style="border-color: ${color};">\n${lineText || "Quote text"}\n</blockquote>\n`;
+    view.dispatch({
+      changes: { from: lineStart, to: line.to, insert: coloredQuote },
+      selection: { anchor: lineStart + coloredQuote.length },
+    });
+  }
+  view.focus();
+}
+
+function insertLink(view: EditorView, selectedText: string) {
+  const selection = view.state.selection.main;
+  const linkText = selectedText || "link text";
+  const template = `[${linkText}](url)`;
+  const urlStart = selection.from + linkText.length + 3; // Position after "]("
+  const urlEnd = urlStart + 3; // Length of "url"
+  
+  view.dispatch({
+    changes: { from: selection.from, to: selection.to, insert: template },
+    selection: { anchor: urlStart, head: urlEnd }, // Select "url" text
   });
   view.focus();
 }

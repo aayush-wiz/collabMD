@@ -132,20 +132,6 @@ export function Tooltip({
     }
   };
 
-  const getSlideStyles = () => {
-    switch (side) {
-      case "bottom":
-        return isVisible ? "translate-y-0" : "-translate-y-2";
-      case "top":
-        return isVisible ? "translate-y-0" : "translate-y-2";
-      case "left":
-        return isVisible ? "translate-x-0" : "translate-x-2";
-      case "right":
-        return isVisible ? "translate-x-0" : "-translate-x-2";
-      default:
-        return "translate-y-0";
-    }
-  };
 
   return (
     <>
@@ -166,9 +152,9 @@ export function Tooltip({
             ref={tooltipRef}
             id={tooltipId.current}
             role="tooltip"
-            className={`fixed z-50 px-3 py-1.5 text-xs font-medium text-white bg-slate-800 rounded-md shadow-lg backdrop-blur-sm border border-slate-700/50 pointer-events-none transition-all duration-200 ease-out ${
+            className={`fixed z-50 px-3 py-1.5 text-xs font-medium text-white bg-slate-800 rounded-md shadow-lg backdrop-blur-sm border border-slate-700/50 pointer-events-none transition-opacity duration-200 ease-out ${
               isVisible ? "opacity-100" : "opacity-0 invisible"
-            } ${getSlideStyles()}`}
+            }`}
             style={{
               top: `${position.top}px`,
               left: `${position.left}px`,
