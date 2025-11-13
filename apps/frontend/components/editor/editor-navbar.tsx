@@ -1,25 +1,64 @@
 "use client";
 
 import Image from "next/image";
+import { useRouter, usePathname } from "next/navigation";
 
 import { VIEW_MODES, useEditorContext } from "./editor-context";
 import { cn } from "../../lib/utils";
 import { Tooltip } from "../ui/tooltip";
+import { useTheme } from "../../providers/theme-provider";
 
 export function EditorNavbar() {
-  const { viewMode, setViewMode, theme, setTheme } = useEditorContext();
+  const { viewMode, setViewMode, saveDocument, isSaving } = useEditorContext();
+  const { theme, toggleTheme } = useTheme();
+  const router = useRouter();
+  const pathname = usePathname();
+
+  const isEditorRoute = pathname?.startsWith("/editor");
+
+  const colors =
+    theme === "dark"
+      ? {
+          bg: "#1A1A1A",
+          text: "#F2F2F2",
+          textSub: "#A6A6A6",
+          border: "#2C2C2C",
+          accent: "#4DA6FF",
+        }
+      : {
+          bg: "#FFFFFF",
+          text: "#111111",
+          textSub: "#5A5A5A",
+          border: "#DCDCDC",
+          accent: "#007ACC",
+        };
 
   return (
-    <header className="w-full bg-gradient-to-b from-slate-900/95 via-slate-900 to-slate-800/90 border-b border-slate-800 text-slate-100 shadow-[0_10px_40px_rgba(5,10,12,0.75)] h-14">
+    <header
+      className="w-full border-b shadow-lg h-14"
+      style={{
+        backgroundColor: colors.bg,
+        borderColor: colors.border,
+        color: colors.text,
+      }}
+    >
       {/* grid layout: auto (left) | 1fr (center) | auto (right) */}
       <div className="grid grid-cols-[auto_1fr_auto] items-center h-full px-4">
         {/* LEFT: real interactive controls */}
         <div className="flex items-center gap-3">
-          <span className="text-xs font-semibold uppercase tracking-wider text-emerald-300/90">
+          <span
+            className="text-xs font-semibold uppercase tracking-wider"
+            style={{ color: colors.accent }}
+          >
             COLLABMD
           </span>
 
-          <div className="flex items-center gap-1 rounded-lg bg-slate-800/50 p-1 backdrop-blur-[2px]">
+          <div
+            className="flex items-center gap-1 rounded-lg p-1 backdrop-blur-[2px]"
+            style={{
+              backgroundColor: theme === "dark" ? "#2C2C2C" : "#F5F5F5",
+            }}
+          >
             {VIEW_MODES.map(({ key, label, src }, index) => {
               const isActive = viewMode === key;
               return (
@@ -35,40 +74,80 @@ export function EditorNavbar() {
                     aria-pressed={isActive}
                     aria-label={label}
                     className={cn(
-                      "flex h-9 w-9 items-center justify-center rounded-md transition-shadow focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-2",
-                      isActive
-                        ? "bg-emerald-400/95 text-slate-900 shadow-[inset_0_2px_6px_rgba(16,185,129,0.12)]"
-                        : "text-slate-300 hover:bg-slate-700/55 hover:text-white"
+                      "flex h-9 w-9 items-center justify-center rounded-md transition-shadow focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-2"
                     )}
+                    style={{
+                      backgroundColor: isActive ? colors.accent : "transparent",
+                      color: isActive ? "#FFFFFF" : colors.textSub,
+                    }}
+                    onMouseEnter={(e) => {
+                      if (!isActive) {
+                        e.currentTarget.style.backgroundColor =
+                          theme === "dark" ? "#333333" : "#E8E8E8";
+                      }
+                    }}
+                    onMouseLeave={(e) => {
+                      if (!isActive) {
+                        e.currentTarget.style.backgroundColor = "transparent";
+                      }
+                    }}
                   >
-                    <Image src={src} alt={label} width={16} height={16} />
+                    <Image
+                      src={src}
+                      alt={label}
+                      width={16}
+                      height={16}
+                      style={{
+                        filter: theme === "light" ? "invert(1)" : "none",
+                      }}
+                    />
                   </button>
                 </Tooltip>
               );
             })}
           </div>
 
-          <Tooltip content="Create new" delayDuration={225} side="bottom">
-            <button
-              type="button"
-              className="flex h-9 w-9 items-center justify-center rounded-md bg-slate-800/55 text-slate-300 transition hover:bg-slate-700/55 hover:text-white focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-emerald-300/60"
-              aria-label="Add new"
-            >
-              <Image
-                src="/icons/navbar/new-project.svg"
-                alt="New"
-                width={16}
-                height={16}
-              />
-            </button>
-          </Tooltip>
+          {isEditorRoute && (
+            <Tooltip content="Save document" delayDuration={225} side="bottom">
+              <button
+                type="button"
+                onClick={saveDocument}
+                disabled={isSaving}
+                className={cn(
+                  "flex h-9 px-3 items-center justify-center rounded-md transition focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-2 text-white"
+                )}
+                style={{
+                  backgroundColor: isSaving
+                    ? theme === "dark"
+                      ? "#2C2C2C"
+                      : "#DCDCDC"
+                    : colors.accent,
+                  color: isSaving ? colors.textSub : "#FFFFFF",
+                  cursor: isSaving ? "not-allowed" : "pointer",
+                }}
+                aria-label="Save document"
+              >
+                <span className="text-sm font-medium">
+                  {isSaving ? "Saving..." : "Save"}
+                </span>
+              </button>
+            </Tooltip>
+          )}
         </div>
 
         {/* CENTER: flexible, naturally centered by grid */}
         <div className="flex justify-center">
           <div
-            className="select-none bg-gradient-to-b from-slate-900/40 to-transparent backdrop-blur-sm rounded-md border border-slate-800/50 px-4 py-1.5 text-sm font-medium text-slate-100 max-w-[60vw] truncate text-center shadow-[0_4px_18px_rgba(6,10,8,0.45)]"
-            style={{ lineHeight: 1.5 }}
+            className="select-none backdrop-blur-sm rounded-md border px-4 py-1.5 text-sm font-medium max-w-[60vw] truncate text-center"
+            style={{
+              lineHeight: 1.5,
+              backgroundColor:
+                theme === "dark"
+                  ? "rgba(26, 26, 26, 0.4)"
+                  : "rgba(250, 250, 250, 0.6)",
+              borderColor: colors.border,
+              color: colors.text,
+            }}
             title="[Product] Product roadmap"
           >
             <span className="text-sm font-semibold tracking-tight">
@@ -84,7 +163,19 @@ export function EditorNavbar() {
             <Tooltip content="Add people" delayDuration={0} side="bottom">
               <button
                 type="button"
-                className="flex h-9 w-9 items-center justify-center rounded-md bg-slate-800/55 text-slate-300 transition hover:bg-slate-700/55 hover:text-white focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-emerald-300/60"
+                className="flex h-9 w-9 items-center justify-center rounded-md transition focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-2"
+                style={{
+                  backgroundColor: theme === "dark" ? "#2C2C2C" : "#F5F5F5",
+                  color: colors.textSub,
+                }}
+                onMouseEnter={(e) => {
+                  e.currentTarget.style.backgroundColor =
+                    theme === "dark" ? "#333333" : "#E8E8E8";
+                }}
+                onMouseLeave={(e) => {
+                  e.currentTarget.style.backgroundColor =
+                    theme === "dark" ? "#2C2C2C" : "#F5F5F5";
+                }}
                 aria-label="Add people"
               >
                 <Image
@@ -92,16 +183,24 @@ export function EditorNavbar() {
                   alt="Add people"
                   width={16}
                   height={16}
+                  style={{ filter: theme === "light" ? "invert(1)" : "none" }}
                 />
               </button>
             </Tooltip>
             <Tooltip content="Group View" delayDuration={75} side="bottom">
-              <span className="flex h-9 w-9 items-center justify-center rounded-md bg-slate-800/55 text-slate-300">
+              <span
+                className="flex h-9 w-9 items-center justify-center rounded-md"
+                style={{
+                  backgroundColor: theme === "dark" ? "#2C2C2C" : "#F5F5F5",
+                  color: colors.textSub,
+                }}
+              >
                 <Image
                   src="/icons/navbar/group-view.svg"
                   alt="Group View"
                   width={16}
                   height={16}
+                  style={{ filter: theme === "light" ? "invert(1)" : "none" }}
                 />
               </span>
             </Tooltip>
@@ -115,8 +214,20 @@ export function EditorNavbar() {
             >
               <button
                 type="button"
-                onClick={() => setTheme(theme === "dark" ? "light" : "dark")}
-                className="flex h-9 w-9 items-center justify-center rounded-md bg-slate-800/55 text-slate-300 transition hover:bg-slate-700/55 hover:text-white"
+                onClick={toggleTheme}
+                className="flex h-9 w-9 items-center justify-center rounded-md transition"
+                style={{
+                  backgroundColor: theme === "dark" ? "#2C2C2C" : "#F5F5F5",
+                  color: colors.textSub,
+                }}
+                onMouseEnter={(e) => {
+                  e.currentTarget.style.backgroundColor =
+                    theme === "dark" ? "#333333" : "#E8E8E8";
+                }}
+                onMouseLeave={(e) => {
+                  e.currentTarget.style.backgroundColor =
+                    theme === "dark" ? "#2C2C2C" : "#F5F5F5";
+                }}
                 aria-label={`Switch to ${theme === "dark" ? "light" : "dark"} theme`}
               >
                 <Image
@@ -124,13 +235,27 @@ export function EditorNavbar() {
                   alt={`${theme === "dark" ? "Light" : "Dark"} theme`}
                   width={16}
                   height={16}
+                  style={{ filter: theme === "light" ? "invert(1)" : "none" }}
                 />
               </button>
             </Tooltip>
             <Tooltip content="Workspace" delayDuration={225} side="bottom">
               <button
                 type="button"
-                className="flex h-9 w-9 items-center justify-center rounded-md bg-slate-800/55 text-slate-300 transition hover:bg-slate-700/55 hover:text-white"
+                onClick={() => router.push("/workspace")}
+                className="flex h-9 w-9 items-center justify-center rounded-md transition"
+                style={{
+                  backgroundColor: theme === "dark" ? "#2C2C2C" : "#F5F5F5",
+                  color: colors.textSub,
+                }}
+                onMouseEnter={(e) => {
+                  e.currentTarget.style.backgroundColor =
+                    theme === "dark" ? "#333333" : "#E8E8E8";
+                }}
+                onMouseLeave={(e) => {
+                  e.currentTarget.style.backgroundColor =
+                    theme === "dark" ? "#2C2C2C" : "#F5F5F5";
+                }}
                 aria-label="Open Workspace"
               >
                 <Image
@@ -138,22 +263,36 @@ export function EditorNavbar() {
                   alt="Workspace"
                   width={16}
                   height={16}
+                  style={{ filter: theme === "light" ? "invert(1)" : "none" }}
                 />
               </button>
             </Tooltip>
           </div>
 
-          <Tooltip content="User Profile" delayDuration={300} side="bottom">
+          <Tooltip content="Download" delayDuration={300} side="bottom">
             <button
               type="button"
-              className="flex h-9 w-9 items-center justify-center rounded-md bg-slate-800/55 text-slate-300 transition hover:bg-slate-700/55 hover:text-white"
+              className="flex h-9 w-9 items-center justify-center rounded-md transition"
+              style={{
+                backgroundColor: theme === "dark" ? "#2C2C2C" : "#F5F5F5",
+                color: colors.textSub,
+              }}
+              onMouseEnter={(e) => {
+                e.currentTarget.style.backgroundColor =
+                  theme === "dark" ? "#333333" : "#E8E8E8";
+              }}
+              onMouseLeave={(e) => {
+                e.currentTarget.style.backgroundColor =
+                  theme === "dark" ? "#2C2C2C" : "#F5F5F5";
+              }}
               aria-label="Open User Profile"
             >
               <Image
-                src="/icons/navbar/user.svg"
-                alt="User Profile"
+                src="/icons/navbar/download.svg"
+                alt="Download"
                 width={16}
                 height={16}
+                style={{ filter: theme === "light" ? "invert(1)" : "none" }}
               />
             </button>
           </Tooltip>

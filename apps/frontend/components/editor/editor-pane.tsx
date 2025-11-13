@@ -7,17 +7,18 @@ import { EditorView } from "@codemirror/view";
 
 import { useEditorContext } from "./editor-context";
 import { EditorToolbar } from "./editor-toolbar";
+import { useTheme } from "../../providers/theme-provider";
 
 const CodeMirror = dynamic(
   () => import("@uiw/react-codemirror").then((mod) => mod.default),
   { ssr: false }
 );
 
-const editorTheme = EditorView.theme(
+const darkEditorTheme = EditorView.theme(
   {
     "&": {
       backgroundColor: "transparent",
-      color: "#E2E8F0",
+      color: "#F2F2F2",
       fontFamily:
         '"JetBrains Mono", "Fira Code", "SFMono-Regular", ui-monospace, Menlo, Monaco, Consolas, "Liberation Mono", "Courier New", monospace',
       fontSize: "14px",
@@ -26,30 +27,30 @@ const editorTheme = EditorView.theme(
       height: "100%",
     },
     ".cm-content": {
-      caretColor: "#38BDF8",
+      caretColor: "#4DA6FF",
       paddingBottom: "96px",
     },
     ".cm-line": {
       paddingLeft: "0",
     },
     ".cm-activeLine": {
-      backgroundColor: "rgba(148, 163, 184, 0.08)",
+      backgroundColor: "rgba(77, 166, 255, 0.1)",
     },
     ".cm-selectionBackground, &.cm-focused .cm-selectionBackground": {
-      backgroundColor: "rgba(56, 189, 248, 0.25)",
+      backgroundColor: "rgba(77, 166, 255, 0.2)",
     },
     ".cm-gutters": {
-      backgroundColor: "rgba(15, 23, 42, 0.65)",
-      borderRight: "1px solid rgba(148, 163, 184, 0.2)",
+      backgroundColor: "#1A1A1A",
+      borderRight: "1px solid #2C2C2C",
     },
     ".cm-lineNumbers": {
       minWidth: "3.25rem",
       paddingRight: "1rem",
-      color: "#94A3B8",
+      color: "#A6A6A6",
     },
     ".cm-activeLineGutter": {
-      backgroundColor: "rgba(148, 163, 184, 0.18)",
-      color: "#E2E8F0",
+      backgroundColor: "rgba(77, 166, 255, 0.15)",
+      color: "#F2F2F2",
     },
     ".cm-scroller": {
       padding: "1.5rem",
@@ -61,13 +62,71 @@ const editorTheme = EditorView.theme(
   { dark: true }
 );
 
+const lightEditorTheme = EditorView.theme(
+  {
+    "&": {
+      backgroundColor: "transparent",
+      color: "#111111",
+      fontFamily:
+        '"JetBrains Mono", "Fira Code", "SFMono-Regular", ui-monospace, Menlo, Monaco, Consolas, "Liberation Mono", "Courier New", monospace',
+      fontSize: "14px",
+    },
+    ".cm-editor": {
+      height: "100%",
+    },
+    ".cm-content": {
+      caretColor: "#007ACC",
+      paddingBottom: "96px",
+    },
+    ".cm-line": {
+      paddingLeft: "0",
+    },
+    ".cm-activeLine": {
+      backgroundColor: "rgba(0, 122, 204, 0.08)",
+    },
+    ".cm-selectionBackground, &.cm-focused .cm-selectionBackground": {
+      backgroundColor: "rgba(0, 122, 204, 0.15)",
+    },
+    ".cm-gutters": {
+      backgroundColor: "#FFFFFF",
+      borderRight: "1px solid #DCDCDC",
+    },
+    ".cm-lineNumbers": {
+      minWidth: "3.25rem",
+      paddingRight: "1rem",
+      color: "#5A5A5A",
+    },
+    ".cm-activeLineGutter": {
+      backgroundColor: "rgba(0, 122, 204, 0.12)",
+      color: "#111111",
+    },
+    ".cm-scroller": {
+      padding: "1.5rem",
+    },
+    ".cm-foldGutter": {
+      display: "none",
+    },
+  },
+  { dark: false }
+);
+
 export function EditorPane() {
   const { markdown, setMarkdown, editorViewRef } = useEditorContext();
+  const { theme } = useTheme();
 
   const extensions = useMemo(
     () => [markdownExtension(), EditorView.lineWrapping],
     []
   );
+
+  const editorTheme = useMemo(
+    () => (theme === "dark" ? darkEditorTheme : lightEditorTheme),
+    [theme]
+  );
+
+  const colors = theme === "dark"
+    ? { surface: "#1A1A1A", border: "#2C2C2C" }
+    : { surface: "#FFFFFF", border: "#DCDCDC" };
 
   const handleChange = useCallback(
     (value: string) => {
@@ -84,8 +143,17 @@ export function EditorPane() {
   );
 
   return (
-    <section className="flex h-full flex-1 flex-col border border-slate-800 bg-slate-900/60 shadow-[0_25px_60px_-35px_rgba(15,23,42,0.95)]">
-      <div className="border-b border-slate-800">
+    <section 
+      className="flex h-full flex-1 flex-col border shadow-lg"
+      style={{
+        borderColor: colors.border,
+        backgroundColor: colors.surface,
+      }}
+    >
+      <div 
+        className="border-b"
+        style={{ borderColor: colors.border }}
+      >
         <EditorToolbar />
       </div>
       <div className="flex-1 overflow-y-auto">

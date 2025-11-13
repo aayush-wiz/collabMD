@@ -2,6 +2,7 @@
 import { useId, useState, useRef, useEffect } from "react";
 import { cn } from "../../lib/utils";
 import { useEditorContext } from "./editor-context";
+import { useTheme } from "../../providers/theme-provider";
 
 interface ToolbarAction {
   id: string;
@@ -69,6 +70,10 @@ function ToolbarButton({
   onClick?: () => void;
 }) {
   const tooltipId = useId();
+  const { theme } = useTheme();
+  const colors = theme === "dark"
+    ? { buttonBg: "#2C2C2C", buttonHover: "#333333", text: "#F2F2F2", tooltipBg: "#1A1A1A" }
+    : { buttonBg: "#F5F5F5", buttonHover: "#E8E8E8", text: "#111111", tooltipBg: "#2C2C2C" };
 
   return (
     <div className="group relative flex items-center justify-center">
@@ -77,22 +82,28 @@ function ToolbarButton({
         aria-label={action.label}
         aria-describedby={tooltipId}
         onClick={onClick}
-        className={cn(
-          "flex h-9 w-9 items-center justify-center rounded-md transition",
-          "bg-slate-800/50 text-slate-200 shadow-inner shadow-slate-950/30",
-          "hover:bg-slate-700/70 hover:text-white",
-          "focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-cyan-200"
-        )}
+        className="flex h-9 w-9 items-center justify-center rounded-md transition focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-2"
+        style={{
+          backgroundColor: colors.buttonBg,
+          color: colors.text,
+        }}
+        onMouseEnter={(e) => {
+          e.currentTarget.style.backgroundColor = colors.buttonHover;
+        }}
+        onMouseLeave={(e) => {
+          e.currentTarget.style.backgroundColor = colors.buttonBg;
+        }}
       >
         <img
           src={action.iconSrc}
           alt=""
           className="h-4 w-4 object-contain"
           draggable={false}
+          style={{ filter: theme === "light" ? "invert(1)" : "none" }}
         />
       </button>
 
-      {/* Tooltip container — always in DOM so transitions and a11y work */}
+      {/* Tooltip container */}
       <div
         id={tooltipId}
         role="tooltip"
@@ -106,12 +117,14 @@ function ToolbarButton({
         )}
       >
         <div
-          className="relative rounded-md bg-slate-950 px-3 py-1.5 text-[11px] font-medium text-slate-100 shadow-md shadow-black/40"
+          className="relative rounded-md px-3 py-1.5 text-[11px] font-medium shadow-md text-white"
+          style={{ backgroundColor: colors.tooltipBg }}
           aria-hidden="false"
         >
           {action.label}
           <span
-            className="absolute -top-1 left-1/2 h-2 w-2 -translate-x-1/2 rotate-45 bg-slate-950"
+            className="absolute -top-1 left-1/2 h-2 w-2 -translate-x-1/2 rotate-45"
+            style={{ backgroundColor: colors.tooltipBg }}
             aria-hidden="true"
           />
         </div>
@@ -154,7 +167,12 @@ function ColorPickerButton({
   const [isOpen, setIsOpen] = useState(false);
   const dropdownRef = useRef<HTMLDivElement>(null);
   const { executeActionWithColor } = useEditorContext();
+  const { theme } = useTheme();
   const tooltipId = useId();
+
+  const themeColors = theme === "dark"
+    ? { buttonBg: "#2C2C2C", buttonHover: "#333333", text: "#F2F2F2", tooltipBg: "#1A1A1A", dropdownBg: "#1A1A1A", border: "#2C2C2C" }
+    : { buttonBg: "#F5F5F5", buttonHover: "#E8E8E8", text: "#111111", tooltipBg: "#2C2C2C", dropdownBg: "#FFFFFF", border: "#DCDCDC" };
 
   useEffect(() => {
     function handleClickOutside(event: MouseEvent) {
@@ -190,19 +208,28 @@ function ColorPickerButton({
         aria-label={action.label}
         aria-describedby={tooltipId}
         onClick={() => setIsOpen(!isOpen)}
-        className={cn(
-          "flex h-9 w-9 items-center justify-center rounded-md transition",
-          "bg-slate-800/50 text-slate-200 shadow-inner shadow-slate-950/30",
-          "hover:bg-slate-700/70 hover:text-white",
-          "focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-cyan-200",
-          isOpen && "bg-slate-700/70"
-        )}
+        className="flex h-9 w-9 items-center justify-center rounded-md transition focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-2"
+        style={{
+          backgroundColor: isOpen ? themeColors.buttonHover : themeColors.buttonBg,
+          color: themeColors.text,
+        }}
+        onMouseEnter={(e) => {
+          if (!isOpen) {
+            e.currentTarget.style.backgroundColor = themeColors.buttonHover;
+          }
+        }}
+        onMouseLeave={(e) => {
+          if (!isOpen) {
+            e.currentTarget.style.backgroundColor = themeColors.buttonBg;
+          }
+        }        }
       >
         <img
           src={action.iconSrc}
           alt=""
           className="h-4 w-4 object-contain"
           draggable={false}
+          style={{ filter: theme === "light" ? "invert(1)" : "none" }}
         />
       </button>
 
@@ -221,12 +248,14 @@ function ColorPickerButton({
           )}
         >
           <div
-            className="relative rounded-md bg-slate-950 px-3 py-1.5 text-[11px] font-medium text-slate-100 shadow-md shadow-black/40"
+            className="relative rounded-md px-3 py-1.5 text-[11px] font-medium shadow-md text-white"
+            style={{ backgroundColor: themeColors.tooltipBg }}
             aria-hidden="false"
           >
             {action.label}
             <span
-              className="absolute -top-1 left-1/2 h-2 w-2 -translate-x-1/2 rotate-45 bg-slate-950"
+              className="absolute -top-1 left-1/2 h-2 w-2 -translate-x-1/2 rotate-45"
+              style={{ backgroundColor: themeColors.tooltipBg }}
               aria-hidden="true"
             />
           </div>
@@ -236,11 +265,11 @@ function ColorPickerButton({
       {/* Color Dropdown */}
       {isOpen && (
         <div
-          className={cn(
-            "absolute top-full left-1/2 mt-2 -translate-x-1/2 z-50",
-            "bg-slate-900 border border-slate-700 rounded-md shadow-lg shadow-black/40",
-            "p-2 grid grid-cols-3 gap-2 min-w-[150px]"
-          )}
+          className="absolute top-full left-1/2 mt-2 -translate-x-1/2 z-50 rounded-md shadow-lg p-2 grid grid-cols-3 gap-2 min-w-[150px] border"
+          style={{
+            backgroundColor: themeColors.dropdownBg,
+            borderColor: themeColors.border,
+          }}
         >
           {colors.map((color) => (
             <button
@@ -248,9 +277,16 @@ function ColorPickerButton({
               type="button"
               onClick={() => handleColorSelect(color.value)}
               className={cn(
-                "w-10 h-10 rounded-md border-2 border-slate-700 hover:border-slate-400 transition",
+                "w-10 h-10 rounded-md border-2 transition",
                 color.bgClass
               )}
+              style={{ borderColor: themeColors.border }}
+              onMouseEnter={(e) => {
+                e.currentTarget.style.borderColor = theme === "dark" ? "#A6A6A6" : "#5A5A5A";
+              }}
+              onMouseLeave={(e) => {
+                e.currentTarget.style.borderColor = themeColors.border;
+              }}
               title={color.name}
               aria-label={`${action.label} ${color.name}`}
             />
@@ -265,7 +301,12 @@ function HeadingButton({ action }: { action: ToolbarAction }) {
   const [isOpen, setIsOpen] = useState(false);
   const dropdownRef = useRef<HTMLDivElement>(null);
   const { insertHeading } = useEditorContext();
+  const { theme } = useTheme();
   const tooltipId = useId();
+
+  const themeColors = theme === "dark"
+    ? { buttonBg: "#2C2C2C", buttonHover: "#333333", text: "#F2F2F2", tooltipBg: "#1A1A1A", dropdownBg: "#1A1A1A", border: "#2C2C2C" }
+    : { buttonBg: "#F5F5F5", buttonHover: "#E8E8E8", text: "#111111", tooltipBg: "#2C2C2C", dropdownBg: "#FFFFFF", border: "#DCDCDC" };
 
   useEffect(() => {
     function handleClickOutside(event: MouseEvent) {
@@ -301,19 +342,28 @@ function HeadingButton({ action }: { action: ToolbarAction }) {
         aria-label={action.label}
         aria-describedby={tooltipId}
         onClick={() => setIsOpen(!isOpen)}
-        className={cn(
-          "flex h-9 w-9 items-center justify-center rounded-md transition",
-          "bg-slate-800/50 text-slate-200 shadow-inner shadow-slate-950/30",
-          "hover:bg-slate-700/70 hover:text-white",
-          "focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-cyan-200",
-          isOpen && "bg-slate-700/70"
-        )}
+        className="flex h-9 w-9 items-center justify-center rounded-md transition focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-2"
+        style={{
+          backgroundColor: isOpen ? themeColors.buttonHover : themeColors.buttonBg,
+          color: themeColors.text,
+        }}
+        onMouseEnter={(e) => {
+          if (!isOpen) {
+            e.currentTarget.style.backgroundColor = themeColors.buttonHover;
+          }
+        }}
+        onMouseLeave={(e) => {
+          if (!isOpen) {
+            e.currentTarget.style.backgroundColor = themeColors.buttonBg;
+          }
+        }}
       >
         <img
           src={action.iconSrc}
           alt=""
           className="h-4 w-4 object-contain"
           draggable={false}
+          style={{ filter: theme === "light" ? "invert(1)" : "none" }}
         />
       </button>
 
@@ -332,12 +382,14 @@ function HeadingButton({ action }: { action: ToolbarAction }) {
           )}
         >
           <div
-            className="relative rounded-md bg-slate-950 px-3 py-1.5 text-[11px] font-medium text-slate-100 shadow-md shadow-black/40"
+            className="relative rounded-md px-3 py-1.5 text-[11px] font-medium shadow-md text-white"
+            style={{ backgroundColor: themeColors.tooltipBg }}
             aria-hidden="false"
           >
             {action.label}
             <span
-              className="absolute -top-1 left-1/2 h-2 w-2 -translate-x-1/2 rotate-45 bg-slate-950"
+              className="absolute -top-1 left-1/2 h-2 w-2 -translate-x-1/2 rotate-45"
+              style={{ backgroundColor: themeColors.tooltipBg }}
               aria-hidden="true"
             />
           </div>
@@ -347,18 +399,25 @@ function HeadingButton({ action }: { action: ToolbarAction }) {
       {/* Dropdown */}
       {isOpen && (
         <div
-          className={cn(
-            "absolute top-full left-1/2 mt-2 -translate-x-1/2 z-50",
-            "bg-slate-900 border border-slate-700 rounded-md shadow-lg shadow-black/40",
-            "py-1 min-w-[120px]"
-          )}
+          className="absolute top-full left-1/2 mt-2 -translate-x-1/2 z-50 rounded-md shadow-lg py-1 min-w-[120px] border"
+          style={{
+            backgroundColor: themeColors.dropdownBg,
+            borderColor: themeColors.border,
+          }}
         >
           {[1, 2, 3, 4, 5, 6].map((level) => (
             <button
               key={level}
               type="button"
               onClick={() => handleHeadingSelect(level)}
-              className="w-full px-3 py-2 text-left text-sm text-slate-200 hover:bg-slate-800 transition"
+              className="w-full px-3 py-2 text-left text-sm transition"
+              style={{ color: themeColors.text }}
+              onMouseEnter={(e) => {
+                e.currentTarget.style.backgroundColor = themeColors.buttonHover;
+              }}
+              onMouseLeave={(e) => {
+                e.currentTarget.style.backgroundColor = "transparent";
+              }}
             >
               Heading {level}
             </button>
@@ -376,8 +435,14 @@ function ToolbarActionGroup({
   actions: ToolbarAction[];
   onActionClick: (actionId: string) => void;
 }) {
+  const { theme } = useTheme();
+  const bgColor = theme === "dark" ? "#1A1A1A" : "#F5F5F5";
+  
   return (
-    <div className="flex items-center w-fit gap-1 bg-slate-900/60 px-1 py-1 shadow-sm shadow-slate-950/40">
+    <div 
+      className="flex items-center w-fit gap-1 px-1 py-1 shadow-sm"
+      style={{ backgroundColor: bgColor }}
+    >
       {actions.map((action) => {
         if (action.id === "heading") {
           return <HeadingButton key={action.id} action={action} />;
@@ -414,9 +479,20 @@ function ToolbarActionGroup({
 
 export function EditorToolbar() {
   const { executeAction } = useEditorContext();
+  const { theme } = useTheme();
+
+  const colors = theme === "dark"
+    ? { bg: "#111111", border: "#2C2C2C" }
+    : { bg: "#FAFAFA", border: "#DCDCDC" };
 
   return (
-    <div className="flex items-center justify-center gap-2 border-t border-slate-800/80 bg-slate-950/40 py-2">
+    <div 
+      className="flex items-center justify-center gap-2 border-t py-2"
+      style={{
+        borderColor: colors.border,
+        backgroundColor: colors.bg,
+      }}
+    >
       <ToolbarActionGroup
         actions={GLOBAL_ACTIONS}
         onActionClick={executeAction}

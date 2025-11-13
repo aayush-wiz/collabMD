@@ -1,8 +1,7 @@
 import type { Metadata } from "next";
 import localFont from "next/font/local";
 import "./globals.css";
-import { EditorNavbar } from "../components/editor/editor-navbar";
-import { EditorProvider } from "../components/editor/editor-context";
+import { ClientLayout } from "./client-layout";
 
 const geistSans = localFont({
   src: "./fonts/GeistVF.woff",
@@ -14,8 +13,8 @@ const geistMono = localFont({
 });
 
 export const metadata: Metadata = {
-  title: "CollabMD Frontend",
-  description: "Frontend experience for the CollabMD Turborepo.",
+  title: "CollabMD",
+  description: "Collaborative Markdown Editor",
 };
 
 export default function RootLayout({
@@ -26,12 +25,9 @@ export default function RootLayout({
   return (
     <html lang="en">
       <body
-        className={`${geistSans.variable} ${geistMono.variable} flex h-screen flex-col overflow-hidden bg-slate-950 font-sans antialiased`}
+        className={`${geistSans.variable} ${geistMono.variable} flex h-screen flex-col overflow-hidden font-sans antialiased`}
       >
-        <EditorProvider>
-          <EditorNavbar />
-          <main className="flex flex-1 flex-col overflow-hidden">{children}</main>
-        </EditorProvider>
+        <ClientLayout>{children}</ClientLayout>
       </body>
     </html>
   );

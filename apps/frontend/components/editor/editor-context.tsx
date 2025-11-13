@@ -6,6 +6,7 @@ import {
   useMemo,
   useRef,
   useState,
+  useCallback,
   type Dispatch,
   type MutableRefObject,
   type ReactNode,
@@ -15,19 +16,20 @@ import { EditorView } from "@codemirror/view";
 import { undo, redo } from "@codemirror/commands";
 
 export type ViewMode = "split" | "preview" | "editor";
-export type Theme = "light" | "dark";
 
 interface EditorContextValue {
   markdown: string;
   setMarkdown: Dispatch<SetStateAction<string>>;
   viewMode: ViewMode;
   setViewMode: Dispatch<SetStateAction<ViewMode>>;
-  theme: Theme;
-  setTheme: Dispatch<SetStateAction<Theme>>;
   editorViewRef: MutableRefObject<EditorView | null>;
   executeAction: (actionId: string) => void;
   executeActionWithColor: (actionId: string, color: string) => void;
   insertHeading: (level: number) => void;
+  documentId: string | null;
+  setDocumentId: Dispatch<SetStateAction<string | null>>;
+  saveDocument: () => Promise<void>;
+  isSaving: boolean;
 }
 
 const EditorContext = createContext<EditorContextValue | null>(null);
@@ -83,7 +85,8 @@ const team = ["Lucy", "Mark", "Amy", "Brittany"];
 export function EditorProvider({ children }: { children: ReactNode }) {
   const [viewMode, setViewMode] = useState<ViewMode>("split");
   const [markdown, setMarkdown] = useState(DEFAULT_MARKDOWN);
-  const [theme, setTheme] = useState<Theme>("dark");
+  const [documentId, setDocumentId] = useState<string | null>(null);
+  const [isSaving, setIsSaving] = useState(false);
   const editorViewRef = useRef<EditorView | null>(null);
 
   const insertHeading = (level: number) => {
@@ -93,6 +96,44 @@ export function EditorProvider({ children }: { children: ReactNode }) {
     const hashes = "#".repeat(level);
     insertAtLineStart(view, `${hashes} `);
   };
+
+  const saveDocument = useCallback(async () => {
+    if (isSaving) return;
+    
+    setIsSaving(true);
+    try {
+      // Import API client dynamically to avoid issues
+      const { api } = await import("../../lib/api-client");
+      
+      if (documentId) {
+        // Update existing document
+        const response = await api.put(`/api/documents/${documentId}`, { content: markdown });
+        
+        if (!response.ok) {
+          throw new Error("Failed to save document");
+        }
+      } else {
+        // Create new document
+        const response = await api.post("/api/documents", { content: markdown });
+        
+        if (!response.ok) {
+          throw new Error("Failed to create document");
+        }
+        
+        const data = await response.json();
+        setDocumentId(data.id);
+        
+        // Update URL to reflect the new document ID
+        if (typeof window !== "undefined") {
+          window.history.replaceState(null, "", `/editor/${data.id}`);
+        }
+      }
+    } catch (error) {
+      console.error("Error saving document:", error);
+    } finally {
+      setIsSaving(false);
+    }
+  }, [documentId, markdown, isSaving]);
 
   const executeActionWithColor = (actionId: string, color: string) => {
     const view = editorViewRef.current;
@@ -181,14 +222,16 @@ export function EditorProvider({ children }: { children: ReactNode }) {
       setMarkdown,
       viewMode,
       setViewMode,
-      theme,
-      setTheme,
       editorViewRef,
       executeAction,
       executeActionWithColor,
       insertHeading,
+      documentId,
+      setDocumentId,
+      saveDocument,
+      isSaving,
     }),
-    [markdown, viewMode, theme]
+    [markdown, viewMode, documentId, isSaving, saveDocument]
   );
 
   return (
