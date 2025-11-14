@@ -4,6 +4,7 @@ import {
   createContext,
   useContext,
   useMemo,
+  useEffect,
   useRef,
   useState,
   useCallback,
@@ -14,6 +15,7 @@ import {
 } from "react";
 import { EditorView } from "@codemirror/view";
 import { undo, redo } from "@codemirror/commands";
+import { localDocs } from "../../lib/local-docs";
 
 export type ViewMode = "split" | "preview" | "editor";
 
@@ -30,6 +32,7 @@ interface EditorContextValue {
   setDocumentId: Dispatch<SetStateAction<string | null>>;
   saveDocument: () => Promise<void>;
   isSaving: boolean;
+  pendingSave: boolean;
 }
 
 const EditorContext = createContext<EditorContextValue | null>(null);
@@ -87,7 +90,21 @@ export function EditorProvider({ children }: { children: ReactNode }) {
   const [markdown, setMarkdown] = useState(DEFAULT_MARKDOWN);
   const [documentId, setDocumentId] = useState<string | null>(null);
   const [isSaving, setIsSaving] = useState(false);
+  const [pendingSave, setPendingSave] = useState(false);
   const editorViewRef = useRef<EditorView | null>(null);
+
+  function generateRandomTitle(): string {
+    const adjectives = ["Quiet", "Swift", "Bold", "Bright", "Neon", "Crimson", "Golden", "Icy", "Azure", "Witty"];
+    const nouns = ["Quokka", "Falcon", "Pixel", "Nova", "Echo", "Nimbus", "Voyage", "Pebble", "Beacon", "Comet"];
+    const a = adjectives[Math.floor(Math.random() * adjectives.length)];
+    const n = nouns[Math.floor(Math.random() * nouns.length)];
+    const suffix = Math.random().toString(36).slice(2, 6).toUpperCase();
+    return `Untitled ${a} ${n} ${suffix}`;
+  }
+
+  function hasAnyNonEmptyLine(text: string): boolean {
+    return text.split(/\r?\n/).some((line) => line.trim().length > 0);
+  }
 
   const insertHeading = (level: number) => {
     const view = editorViewRef.current;
@@ -102,30 +119,22 @@ export function EditorProvider({ children }: { children: ReactNode }) {
     
     setIsSaving(true);
     try {
-      // Import API client dynamically to avoid issues
-      const { api } = await import("../../lib/api-client");
-      
       if (documentId) {
-        // Update existing document
-        const response = await api.put(`/api/documents/${documentId}`, { content: markdown });
-        
-        if (!response.ok) {
-          throw new Error("Failed to save document");
-        }
+        // Update existing document in localStorage
+        localDocs.update(documentId, markdown);
       } else {
-        // Create new document
-        const response = await api.post("/api/documents", { content: markdown });
-        
-        if (!response.ok) {
-          throw new Error("Failed to create document");
+        // Create new document in localStorage
+        let nextContent = markdown;
+        if (!hasAnyNonEmptyLine(markdown)) {
+          const randomTitle = generateRandomTitle();
+          nextContent = `# ${randomTitle}\n\n`;
+          setMarkdown(nextContent);
         }
-        
-        const data = await response.json();
-        setDocumentId(data.id);
-        
+        const doc = localDocs.create(nextContent);
+        setDocumentId(doc.id);
         // Update URL to reflect the new document ID
         if (typeof window !== "undefined") {
-          window.history.replaceState(null, "", `/editor/${data.id}`);
+          window.history.replaceState(null, "", `/editor/${doc.id}`);
         }
       }
     } catch (error) {
@@ -230,9 +239,21 @@ export function EditorProvider({ children }: { children: ReactNode }) {
       setDocumentId,
       saveDocument,
       isSaving,
+      pendingSave,
     }),
-    [markdown, viewMode, documentId, isSaving, saveDocument]
+    [markdown, viewMode, documentId, isSaving, pendingSave, saveDocument]
   );
+
+  // Debounced autosave when markdown changes
+  useEffect(() => {
+    // Only trigger when markdown changes; debounce by 800ms
+    setPendingSave(true);
+    const timer = setTimeout(async () => {
+      await saveDocument();
+      setPendingSave(false);
+    }, 800);
+    return () => clearTimeout(timer);
+  }, [markdown, saveDocument]);
 
   return (
     <EditorContext.Provider value={value}>{children}</EditorContext.Provider>

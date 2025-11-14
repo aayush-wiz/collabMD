@@ -2,17 +2,12 @@
   "name": "collabMD",
   "private": true,
   "scripts": {
-    "build": "turbo run build",
-    "dev": "turbo run dev",
-    "lint": "turbo run lint",
+    "build": "turbo run build --filter=frontend",
+    "dev": "turbo run dev --filter=frontend",
+    "lint": "turbo run lint --filter=frontend",
     "format": "prettier --write \"**/*.{ts,tsx,md}\"",
-    "check-types": "turbo run check-types",
-    "dev:frontend": "npm run dev --workspace frontend",
-    "dev:backend": "npm run dev --workspace backend",
-    "db:generate": "turbo run db:generate --filter=backend",
-    "db:push": "turbo run db:push --filter=backend",
-    "db:migrate": "turbo run db:migrate --filter=backend",
-    "postinstall": "turbo run db:generate --filter=backend"
+    "check-types": "turbo run check-types --filter=frontend",
+    "dev:frontend": "npm run dev --workspace frontend"
   },
   "devDependencies": {
     "prettier": "^3.6.2",

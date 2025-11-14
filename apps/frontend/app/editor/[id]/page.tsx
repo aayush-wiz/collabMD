@@ -5,7 +5,7 @@ import { useParams } from "next/navigation";
 import { Workspace } from "../../../components/editor/workspace";
 import { useEditorContext } from "../../../components/editor/editor-context";
 import { useTheme } from "../../../providers/theme-provider";
-import { api } from "../../../lib/api-client";
+import { localDocs } from "../../../lib/local-docs";
 
 export default function EditorPage() {
   const params = useParams();
@@ -15,13 +15,13 @@ export default function EditorPage() {
   const [error, setError] = useState<string | null>(null);
 
   useEffect(() => {
-    const fetchDocument = async () => {
+    const fetchDocument = () => {
       try {
-        const response = await api.get(`/api/documents/${params.id}`);
-        if (response.ok) {
-          const data = await response.json();
-          setMarkdown(data.content);
-          setDocumentId(data.id);
+        const id = String(params.id);
+        const doc = localDocs.get(id);
+        if (doc) {
+          setMarkdown(doc.content);
+          setDocumentId(doc.id);
         } else {
           setError("Document not found");
         }

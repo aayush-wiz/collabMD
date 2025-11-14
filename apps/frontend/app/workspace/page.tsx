@@ -4,7 +4,8 @@ import { useEffect, useState } from "react";
 import { DocumentCard } from "../../components/workspace/document-card";
 import { WorkspaceHeader } from "../../components/workspace/workspace-header";
 import { useTheme } from "../../providers/theme-provider";
-import { api } from "../../lib/api-client";
+import { localDocs } from "../../lib/local-docs";
+import { DEFAULT_MARKDOWN } from "../../components/editor/editor-context";
 
 interface Document {
   id: string;
@@ -24,28 +25,27 @@ export default function WorkspacePage() {
   }, []);
 
   const fetchDocuments = async () => {
-    try {
-      const response = await api.get("/api/documents");
-      if (response.ok) {
-        const data = await response.json();
-        setDocuments(data);
-      }
-    } catch (error) {
-      console.error("Error fetching documents:", error);
-    } finally {
-      setLoading(false);
+    // LocalStorage fetch is synchronous
+    const data = localDocs.list();
+    if (data.length === 0) {
+      // Seed a starter template on first visit
+      localDocs.create(DEFAULT_MARKDOWN);
+      setDocuments(localDocs.list());
+    } else {
+      setDocuments(data);
     }
+    setLoading(false);
   };
 
   const handleDeleteDocument = async (id: string) => {
-    try {
-      const response = await api.delete(`/api/documents/${id}`);
-      if (response.ok) {
-        setDocuments(documents.filter((doc) => doc.id !== id));
-      }
-    } catch (error) {
-      console.error("Error deleting document:", error);
-    }
+    localDocs.remove(id);
+    setDocuments((prev) => prev.filter((doc) => doc.id !== id));
+  };
+
+  const handleRenameDocument = (id: string, newTitle: string) => {
+    setDocuments((prev) =>
+      prev.map((doc) => (doc.id === id ? { ...doc, title: newTitle } : doc))
+    );
   };
 
   return (
@@ -86,6 +86,7 @@ export default function WorkspacePage() {
                 preview={doc.preview}
                 createdAt={doc.createdAt}
                 onDelete={handleDeleteDocument}
+                onRename={handleRenameDocument}
               />
             ))}
           </div>
@@ -94,4 +95,3 @@ export default function WorkspacePage() {
     </main>
   );
 }
-

@@ -1,6 +1,6 @@
 "use client";
 
-import { useState } from "react";
+import { useEffect, useMemo, useState } from "react";
 import Image from "next/image";
 import { useRouter, usePathname } from "next/navigation";
 
@@ -9,13 +9,23 @@ import { cn } from "../../lib/utils";
 import { Tooltip } from "../ui/tooltip";
 import { useTheme } from "../../providers/theme-provider";
 import { DownloadModal } from "./download-modal";
+import { localDocs, summarize, setTitle as setContentTitle } from "../../lib/local-docs";
 
 export function EditorNavbar() {
-  const { viewMode, setViewMode, saveDocument, isSaving, markdown, documentId } = useEditorContext();
+  const {
+    viewMode,
+    setViewMode,
+    isSaving,
+    markdown,
+    documentId,
+    setMarkdown,
+    pendingSave,
+  } = useEditorContext();
   const { theme, toggleTheme } = useTheme();
   const router = useRouter();
   const pathname = usePathname();
   const [isDownloadModalOpen, setIsDownloadModalOpen] = useState(false);
+  const [titleInput, setTitleInput] = useState(() => summarize(markdown).title);
 
   const isEditorRoute = pathname?.startsWith("/editor");
 
@@ -111,37 +121,20 @@ export function EditorNavbar() {
           </div>
 
           {isEditorRoute && (
-            <Tooltip content="Save document" delayDuration={225} side="bottom">
-              <button
-                type="button"
-                onClick={saveDocument}
-                disabled={isSaving}
-                className={cn(
-                  "flex h-9 px-3 items-center justify-center rounded-md transition focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-2 text-white"
-                )}
-                style={{
-                  backgroundColor: isSaving
-                    ? theme === "dark"
-                      ? "#2C2C2C"
-                      : "#DCDCDC"
-                    : colors.accent,
-                  color: isSaving ? colors.textSub : "#FFFFFF",
-                  cursor: isSaving ? "not-allowed" : "pointer",
-                }}
-                aria-label="Save document"
-              >
-                <span className="text-sm font-medium">
-                  {isSaving ? "Saving..." : "Save"}
-                </span>
-              </button>
-            </Tooltip>
+            <span
+              className="text-sm font-medium"
+              style={{ color: colors.textSub }}
+              aria-live="polite"
+            >
+              {pendingSave || isSaving ? "Saving..." : "Auto-saved"}
+            </span>
           )}
         </div>
 
         {/* CENTER: flexible, naturally centered by grid */}
         <div className="flex justify-center">
           <div
-            className="select-none backdrop-blur-sm rounded-md border px-4 py-1.5 text-sm font-medium max-w-[60vw] truncate text-center"
+            className="backdrop-blur-sm rounded-md border px-3 py-1.5 text-sm font-medium max-w-[60vw]"
             style={{
               lineHeight: 1.5,
               backgroundColor:
@@ -151,11 +144,42 @@ export function EditorNavbar() {
               borderColor: colors.border,
               color: colors.text,
             }}
-            title="[Product] Product roadmap"
           >
-            <span className="text-sm font-semibold tracking-tight">
-              [Product] Product roadmap
-            </span>
+            <input
+              value={titleInput}
+              onChange={(e) => setTitleInput(e.target.value)}
+              onKeyDown={(e) => {
+                if (e.key === "Enter") {
+                  (e.target as HTMLInputElement).blur();
+                } else if (e.key === "Escape") {
+                  // Revert to current derived title
+                  setTitleInput(summarize(markdown).title);
+                  (e.target as HTMLInputElement).blur();
+                }
+              }}
+              onBlur={() => {
+                const next = titleInput.trim();
+                const current = summarize(markdown).title;
+                if (!next || next === current) {
+                  setTitleInput(current);
+                  return;
+                }
+                if (documentId) {
+                  const updated = localDocs.rename(documentId, next);
+                  setMarkdown(updated.content);
+                } else {
+                  const updatedContent = setContentTitle(markdown, next);
+                  setMarkdown(updatedContent);
+                }
+              }}
+              aria-label="Rename document"
+              className="bg-transparent outline-none text-center w-[52vw] sm:w-[56vw] lg:w-[40vw] text-sm font-semibold tracking-tight placeholder:text-[#999] truncate"
+              style={{
+                color: colors.text,
+              }}
+              placeholder="Untitled"
+              spellCheck={false}
+            />
           </div>
         </div>
 
