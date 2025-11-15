@@ -1,95 +1,73 @@
-# CollabMD Monorepo
+# CollabMD
 
-Turborepo-powered workspace for the CollabMD project. It contains a pair of [Next.js](https://nextjs.org/) applications (frontend UI + backend API) and shared packages configured with Tailwind CSS, TypeScript, Prisma, and Postgres (Neon).
+Turborepo-powered monorepo for the CollabMD project. It currently includes a single [Next.js](https://nextjs.org/) application for the frontend, plus shared packages for UI and tooling.
 
 ## Apps
 
-- `apps/frontend`: public-facing Next.js application styled with Tailwind.
-- `apps/backend`: Next.js application that exposes API routes backed by Prisma and Neon Postgres.
+- `apps/frontend`: Public-facing Next.js 16 application styled with Tailwind CSS.
 
 ## Packages
 
-- `@repo/ui`: shared React component library (Tailwind-friendly).
-- `@repo/eslint-config`: shared ESLint configuration.
-- `@repo/typescript-config`: shared TypeScript configuration.
+- `@repo/ui`: Shared React component library (Tailwind-friendly).
+- `@repo/eslint-config`: Shared ESLint configuration.
+- `@repo/typescript-config`: Shared TypeScript configuration.
+
+## Requirements
+
+- Node.js >= 18
+- npm (workspace-enabled; this repo uses npm workspaces)
 
 ## Quick Start
 
 ```bash
-# Install dependencies
+# Install dependencies for the entire workspace
 npm install
 
-# Copy the backend env template and add your Neon connection string
-cp apps/backend/.env.example apps/backend/.env
-
-# Apply the Prisma schema to your Neon database
-npm run db:push
-
-# Start both apps
+# Start the frontend app (port 3000)
 npm run dev
 ```
 
-Open http://localhost:3000 for the frontend and http://localhost:3001 for the backend/API.
-
-## Managing Environments
-
-- `DATABASE_URL`: Neon Postgres connection string (required by Prisma in `apps/backend`).
-- `BACKEND_BASE_URL`: optional base URL for server-side API calls (defaults to `http://localhost:3001`).
-
-> Environment variables should live in `apps/backend/.env`. The template `apps/backend/.env.example` shows the expected shape.
+Open `http://localhost:3000` to view the app.
 
 ## Workspace Scripts
 
-```bash
-npm run dev             # turbo run dev for all apps
-npm run dev:frontend    # next dev --port 3000 (frontend)
-npm run dev:backend     # next dev --port 3001 (backend)
-npm run build           # turbo run build
-npm run lint            # turbo run lint
-npm run check-types     # turbo run check-types
-npm run db:generate     # prisma generate (backend)
-npm run db:push         # prisma db push (backend)
-npm run db:migrate      # prisma migrate dev (backend)
-```
-
-The monorepo uses [Turborepo pipelines](./turbo.json) so task outputs are cached automatically. See `package.json` for the complete script list.
-
-## Database & Prisma
-
-Schema lives in `apps/backend/prisma/schema.prisma`. Update it, then regenerate the client:
+From the repository root:
 
 ```bash
-npm run db:generate
+npm run dev             # turbo run dev --filter=frontend
+npm run build           # turbo run build --filter=frontend
+npm run lint            # turbo run lint --filter=frontend
+npm run check-types     # turbo run check-types --filter=frontend
+npm run format          # prettier --write \"**/*.{ts,tsx,md}\"
+
+# Alternatively, target the workspace explicitly
+npm run dev --workspace frontend
 ```
 
-To apply schema changes to Neon:
-
-```bash
-npm run db:push
-```
-
-Or create versioned migrations:
-
-```bash
-npm run db:migrate
-```
+The monorepo uses [Turborepo pipelines](./turbo.json) for fast, cached builds and a persistent dev server task.
 
 ## Project Structure
 
 ```
 apps/
-  frontend/   # Public UI (Next.js + Tailwind)
-  backend/    # API routes + Prisma integration
+  frontend/            # Public UI (Next.js + Tailwind)
 packages/
-  ui/                 # Shared component library
-  eslint-config/      # ESLint flat config
-  typescript-config/  # Shared tsconfig presets
-turbo.json            # Turborepo pipeline config
+  ui/                  # Shared component library
+  eslint-config/       # ESLint flat config
+  typescript-config/   # Shared tsconfig presets
+turbo.json             # Turborepo pipeline config
 ```
 
-## Remote Caching (Optional)
+## Tech Stack
 
-Authenticate Turbo with Vercel to unlock remote caching:
+- Next.js 16, React 19
+- Tailwind CSS
+- Turborepo
+- TypeScript
+
+## Remote Caching (optional)
+
+Authenticate Turbo with Vercel to enable remote caching:
 
 ```bash
 npx turbo login

@@ -1,6 +1,23 @@
 ## CollabMD Frontend
 
-Next.js 16 application styled with Tailwind CSS. This app lives inside the Turborepo at `apps/frontend`.
+Next.js 16 application styled with Tailwind CSS. This app lives at `apps/frontend` inside the Turborepo.
+
+### Getting Started
+
+From the repository root:
+
+```bash
+npm install
+npm run dev --workspace frontend
+```
+
+Or run directly inside this folder if your package manager is workspace-aware:
+
+```bash
+npm run dev
+```
+
+Open `http://localhost:3000`.
 
 ### Available Scripts
 
@@ -12,7 +29,7 @@ npm run lint           # eslint --max-warnings 0
 npm run check-types    # next typegen && tsc --noEmit
 ```
 
-Run scripts through the workspace:
+You can also invoke these from the root with:
 
 ```bash
 npm run dev --workspace frontend
@@ -23,37 +40,22 @@ npm run dev --workspace frontend
 - `app/` – App Router pages, layouts, and server components.
 - `app/page.tsx` – Markdown editor workspace with live preview and layout toggles.
 - `app/globals.css` – Tailwind entry point.
+- `app/editor/*` – Editor routes (new document and by id).
+- `components/` – CollabMD UI building blocks (editor panes, toolbars, etc).
+- `public/` – Icons and assets used by the editor and navbar.
 - `tailwind.config.ts` – Tailwind setup scanning shared UI components.
-- `components/` – Place collab-specific UI building blocks here.
+
+### Features
+
+- Split/preview/editor layout toggles in the navbar.
+- GitHub-flavored markdown rendering (tables, task lists, code blocks).
+- Toolbar actions for common markdown formatting.
+- Download/export modal for saving content.
 
 ### Styling
 
-Tailwind is configured with the shared Geist font variables. Update `tailwind.config.ts` to add custom theme tokens. Shared components from `@repo/ui` are Tailwind-ready out of the box.
-
-### Data Fetching
-
-Use the backend API (`apps/backend`) for data access or interact directly with future shared packages. Server Components can call `fetch` or integrate with React Server Actions as needed.
-
-### Markdown Editor
-
-The root page now ships a HackMD-style experience:
-
-- Edit markdown in the left pane and see a live preview rendered with GitHub-flavored markdown.
-- Use the navbar to switch between **Split Pane**, **Preview Only**, and **Editor Only** layouts.
-- Tables, task lists, and code blocks are supported out of the box.
-
-#### Manual QA
-
-```bash
-npm run dev --workspace frontend
-```
-
-1. Open `http://localhost:3000`.
-2. Toggle each layout option and confirm the panes show/hide correctly.
-3. Update text in the editor and verify the preview updates instantly.
-4. Paste a table, checklist, and fenced code block to confirm formatting.
-5. Resize the window to ensure the layout stacks gracefully on smaller screens.
+Tailwind is configured with Geist fonts and supports shared components from `@repo/ui`. To customize the theme, edit `tailwind.config.ts`.
 
 ### Deployment
 
-Deploy to any Next.js compatible platform. Ensure the backend services and API routes are deployed alongside this app or proxied appropriately. Configure environment variables in your hosting provider before building.
+Deploy to any Next.js-compatible platform (Vercel, etc.). Ensure environment variables (if introduced later) are configured in your hosting provider prior to build.
