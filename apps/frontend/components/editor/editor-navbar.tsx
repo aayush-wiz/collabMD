@@ -20,6 +20,7 @@ export function EditorNavbar() {
     documentId,
     setMarkdown,
     pendingSave,
+    remoteCursors,
   } = useEditorContext();
   const { theme, toggleTheme } = useTheme();
   const router = useRouter();
@@ -28,6 +29,10 @@ export function EditorNavbar() {
   const [titleInput, setTitleInput] = useState(() => summarize(markdown).title);
 
   const isEditorRoute = pathname?.startsWith("/editor");
+
+  const collaboratorCount = useMemo(() => Object.keys(remoteCursors).length, [
+    remoteCursors,
+  ]);
 
   const colors =
     theme === "dark"
@@ -185,52 +190,26 @@ export function EditorNavbar() {
 
         {/* RIGHT: mirrored placeholders (same visual slots as left) so center uses flex/grid centering */}
         <div className="flex items-center gap-3 justify-end">
-          {/* placeholder for the logo slot */}
-          <div className="flex items-center gap-1 rounded-lg p-1">
-            <Tooltip content="Add people" delayDuration={0} side="bottom">
-              <button
-                type="button"
-                className="flex h-9 w-9 items-center justify-center rounded-md transition focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-2"
-                style={{
-                  backgroundColor: theme === "dark" ? "#2C2C2C" : "#F5F5F5",
-                  color: colors.textSub,
-                }}
-                onMouseEnter={(e) => {
-                  e.currentTarget.style.backgroundColor =
-                    theme === "dark" ? "#333333" : "#E8E8E8";
-                }}
-                onMouseLeave={(e) => {
-                  e.currentTarget.style.backgroundColor =
-                    theme === "dark" ? "#2C2C2C" : "#F5F5F5";
-                }}
-                aria-label="Add people"
-              >
-                <Image
-                  src="/icons/navbar/new-project.svg"
-                  alt="Add people"
-                  width={16}
-                  height={16}
-                  style={{ filter: theme === "light" ? "invert(1)" : "none" }}
-                />
-              </button>
-            </Tooltip>
-            <Tooltip content="Group View" delayDuration={75} side="bottom">
-              <span
-                className="flex h-9 w-9 items-center justify-center rounded-md"
-                style={{
-                  backgroundColor: theme === "dark" ? "#2C2C2C" : "#F5F5F5",
-                  color: colors.textSub,
-                }}
-              >
-                <Image
-                  src="/icons/navbar/group-view.svg"
-                  alt="Group View"
-                  width={16}
-                  height={16}
-                  style={{ filter: theme === "light" ? "invert(1)" : "none" }}
-                />
-              </span>
-            </Tooltip>
+          {/* collaborator presence */}
+          <div className="flex items-center gap-2 rounded-lg px-2 py-1">
+            <span
+              className="inline-flex h-2 w-2 rounded-full"
+              style={{
+                backgroundColor:
+                  collaboratorCount > 1 ? colors.accent : colors.textSub,
+              }}
+              aria-hidden="true"
+            />
+            <span
+              className="text-xs font-medium"
+              style={{ color: colors.textSub }}
+            >
+              {collaboratorCount === 0
+                ? "Just you here"
+                : collaboratorCount === 1
+                ? "1 collaborator"
+                : `${collaboratorCount} collaborators`}
+            </span>
           </div>
           {/* placeholder group that mirrors view-mode buttons count */}
           <div className="flex items-center gap-1 rounded-lg p-1">

@@ -16,6 +16,7 @@ import {
 import { EditorView } from "@codemirror/view";
 import { undo, redo } from "@codemirror/commands";
 import { localDocs } from "../../lib/local-docs";
+import { onDocumentUpdate, onCursorUpdate, type CursorMovePayload } from "../../lib/realtime";
 
 export type ViewMode = "split" | "preview" | "editor";
 
@@ -33,6 +34,13 @@ interface EditorContextValue {
   saveDocument: () => Promise<void>;
   isSaving: boolean;
   pendingSave: boolean;
+  remoteCursors: Record<
+    string,
+    {
+      from: number;
+      to: number;
+    }
+  >;
 }
 
 const EditorContext = createContext<EditorContextValue | null>(null);
@@ -91,6 +99,9 @@ export function EditorProvider({ children }: { children: ReactNode }) {
   const [documentId, setDocumentId] = useState<string | null>(null);
   const [isSaving, setIsSaving] = useState(false);
   const [pendingSave, setPendingSave] = useState(false);
+  const [remoteCursors, setRemoteCursors] = useState<
+    Record<string, { from: number; to: number }>
+  >({});
   const editorViewRef = useRef<EditorView | null>(null);
 
   function generateRandomTitle(): string {
@@ -240,8 +251,9 @@ export function EditorProvider({ children }: { children: ReactNode }) {
       saveDocument,
       isSaving,
       pendingSave,
+      remoteCursors,
     }),
-    [markdown, viewMode, documentId, isSaving, pendingSave, saveDocument]
+    [markdown, viewMode, documentId, isSaving, pendingSave, saveDocument, remoteCursors]
   );
 
   // Debounced autosave when markdown changes
@@ -254,6 +266,37 @@ export function EditorProvider({ children }: { children: ReactNode }) {
     }, 800);
     return () => clearTimeout(timer);
   }, [markdown, saveDocument]);
+
+  // Apply incoming document updates from other collaborators
+  useEffect(() => {
+    const unsubscribe = onDocumentUpdate((content) => {
+      setMarkdown((current) => {
+        if (current === content) return current;
+        return content;
+      });
+    });
+
+    return () => {
+      unsubscribe();
+    };
+  }, []);
+
+  // Track remote cursor positions per collaborator
+  useEffect(() => {
+    const unsubscribe = onCursorUpdate((payload: CursorMovePayload) => {
+      setRemoteCursors((prev) => ({
+        ...prev,
+        [payload.userId]: {
+          from: payload.from,
+          to: payload.to,
+        },
+      }));
+    });
+
+    return () => {
+      unsubscribe();
+    };
+  }, []);
 
   return (
     <EditorContext.Provider value={value}>{children}</EditorContext.Provider>

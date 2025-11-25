@@ -1,13 +1,24 @@
 "use client";
 
 import dynamic from "next/dynamic";
-import { useCallback, useMemo } from "react";
+import { useCallback, useEffect, useMemo, useRef } from "react";
 import { markdown as markdownExtension } from "@codemirror/lang-markdown";
-import { EditorView } from "@codemirror/view";
+import {
+  EditorView,
+  ViewUpdate,
+  Decoration,
+  WidgetType,
+} from "@codemirror/view";
+import { RangeSetBuilder } from "@codemirror/state";
 
 import { useEditorContext } from "./editor-context";
 import { EditorToolbar } from "./editor-toolbar";
 import { useTheme } from "../../providers/theme-provider";
+import {
+  sendDocumentChange,
+  sendCursorMove,
+  getClientId,
+} from "../../lib/realtime";
 
 const CodeMirror = dynamic(
   () => import("@uiw/react-codemirror").then((mod) => mod.default),
@@ -111,12 +122,70 @@ const lightEditorTheme = EditorView.theme(
 );
 
 export function EditorPane() {
-  const { markdown, setMarkdown, editorViewRef } = useEditorContext();
+  const { markdown, setMarkdown, editorViewRef, documentId, remoteCursors } =
+    useEditorContext();
   const { theme } = useTheme();
 
+  const debouncedEmitRef = useRef<((value: string) => void) | null>(null);
+
+  // Debounced emitter for document changes
+  useEffect(() => {
+    let timeout: ReturnType<typeof setTimeout> | null = null;
+
+    debouncedEmitRef.current = (value: string) => {
+      if (!documentId) return;
+
+      if (timeout) {
+        clearTimeout(timeout);
+      }
+
+      timeout = setTimeout(() => {
+        sendDocumentChange({
+          documentId,
+          content: value,
+        });
+      }, 150);
+    };
+
+    return () => {
+      if (timeout) {
+        clearTimeout(timeout);
+      }
+    };
+  }, [documentId]);
+
+  const cursorSyncExtension = useMemo(
+    () =>
+      EditorView.updateListener.of((update: ViewUpdate) => {
+        if (!update.selectionSet) return;
+        if (!documentId) return;
+
+        const selection = update.state.selection.main;
+        const userId = getClientId();
+
+        sendCursorMove({
+          documentId,
+          userId,
+          from: selection.from,
+          to: selection.to,
+        });
+      }),
+    [documentId]
+  );
+
+  const remoteCursorExtension = useMemo(
+    () => createRemoteCursorExtension(remoteCursors),
+    [remoteCursors]
+  );
+
   const extensions = useMemo(
-    () => [markdownExtension(), EditorView.lineWrapping],
-    []
+    () => [
+      markdownExtension(),
+      EditorView.lineWrapping,
+      cursorSyncExtension,
+      remoteCursorExtension,
+    ],
+    [cursorSyncExtension, remoteCursorExtension]
   );
 
   const editorTheme = useMemo(
@@ -124,13 +193,15 @@ export function EditorPane() {
     [theme]
   );
 
-  const colors = theme === "dark"
-    ? { surface: "#1A1A1A", border: "#2C2C2C" }
-    : { surface: "#FFFFFF", border: "#DCDCDC" };
+  const colors =
+    theme === "dark"
+      ? { surface: "#1A1A1A", border: "#2C2C2C" }
+      : { surface: "#FFFFFF", border: "#DCDCDC" };
 
   const handleChange = useCallback(
     (value: string) => {
       setMarkdown(value);
+      debouncedEmitRef.current?.(value);
     },
     [setMarkdown]
   );
@@ -143,17 +214,14 @@ export function EditorPane() {
   );
 
   return (
-    <section 
+    <section
       className="flex h-full flex-1 flex-col border shadow-lg"
       style={{
         borderColor: colors.border,
         backgroundColor: colors.surface,
       }}
     >
-      <div 
-        className="border-b"
-        style={{ borderColor: colors.border }}
-      >
+      <div className="border-b" style={{ borderColor: colors.border }}>
         <EditorToolbar />
       </div>
       <div className="flex-1 overflow-y-auto">
@@ -176,4 +244,65 @@ export function EditorPane() {
       </div>
     </section>
   );
+}
+
+function createRemoteCursorExtension(
+  remoteCursors: Record<string, { from: number; to: number }>
+) {
+  return EditorView.decorations.of((view) => {
+    const builder = new RangeSetBuilder<Decoration>();
+
+    const docLength = view.state.doc.length;
+
+    Object.entries(remoteCursors).forEach(([, range], index) => {
+      const from = Math.max(0, Math.min(range.from, docLength));
+      const to = Math.max(0, Math.min(range.to, docLength));
+
+      if (from > docLength) return;
+
+      const hue = (index * 57) % 360;
+      const color = `hsl(${hue} 100% 50%)`;
+
+      if (from === to) {
+        const cursorDeco = Decoration.widget({
+          widget: new RemoteCursorWidget(color),
+          side: 1,
+        });
+        builder.add(from, from, cursorDeco);
+      } else {
+        const mark = Decoration.mark({
+          attributes: {
+            style: `background-color: ${color}33;`,
+          },
+        });
+        builder.add(from, to, mark);
+      }
+    });
+
+    return builder.finish();
+  });
+}
+
+class RemoteCursorWidget extends WidgetType {
+  private readonly color: string;
+
+  constructor(color: string) {
+    super();
+    this.color = color;
+  }
+
+  eq(other: WidgetType): boolean {
+    return other instanceof RemoteCursorWidget && other.color === this.color;
+  }
+
+  toDOM(): HTMLSpanElement {
+    const span = document.createElement("span");
+    span.style.borderLeft = `2px solid ${this.color}`;
+    span.style.marginLeft = "-1px";
+    span.style.marginRight = "-1px";
+    span.style.height = "1em";
+    span.style.display = "inline-block";
+    span.style.verticalAlign = "text-bottom";
+    return span;
+  }
 }

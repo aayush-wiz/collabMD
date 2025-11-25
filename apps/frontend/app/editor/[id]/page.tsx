@@ -6,6 +6,7 @@ import { Workspace } from "../../../components/editor/workspace";
 import { useEditorContext } from "../../../components/editor/editor-context";
 import { useTheme } from "../../../providers/theme-provider";
 import { localDocs } from "../../../lib/local-docs";
+import { joinDocument, leaveDocument } from "../../../lib/realtime";
 
 export default function EditorPage() {
   const params = useParams();
@@ -37,6 +38,17 @@ export default function EditorPage() {
       fetchDocument();
     }
   }, [params.id, setMarkdown, setDocumentId]);
+
+  useEffect(() => {
+    const id = params.id ? String(params.id) : null;
+    if (!id) return;
+
+    joinDocument(id);
+
+    return () => {
+      leaveDocument(id);
+    };
+  }, [params.id]);
 
   if (loading) {
     return (
