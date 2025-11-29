@@ -53,13 +53,13 @@ export const VIEW_MODES: { key: ViewMode; label: string; src: string }[] = [
 
 export const DEFAULT_MARKDOWN = `# Product Roadmap
 
-> 💡 This template helps your team plan quarterly goals and stay aligned.
+>  This template helps your team plan quarterly goals and stay aligned.
 
-## ✅ Product Description
+##  Product Description
 
 Describe the product you want to create a roadmap for. Capture the problem it solves, who it serves, and how success will be measured.
 
-## 📆 Quarterly Roadmap
+##  Quarterly Roadmap
 
 | Goals Description | Q1 | Q2 | Q3 | Q4 |
 | ----------------- | --- | --- | --- | --- |
@@ -73,7 +73,7 @@ Describe the product you want to create a roadmap for. Capture the problem it so
 - [ ] Related product research
 - [ ] Kick-off design sprint
 
-> ✅ Tip: Check off items as each milestone ships.
+>  Tip: Check off items as each milestone ships.
 
 ### Q2
 
