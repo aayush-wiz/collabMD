@@ -12,18 +12,29 @@ model User {
   email     String   @unique
   password  String?
   name      String?
+  avatar    String?
   createdAt DateTime @default(now())
   updatedAt DateTime @updatedAt
+
+  // Relationships
+  documents Document[] @relation("DocumentOwner")
 
   @@index([email])
 }
 
 model Document {
-  id        String   @id
+  id        String   @id @default(uuid())
   title     String
-  content   String
+  content   String   @db.Text
+  userId    String
+  isPublic  Boolean  @default(false)
   createdAt DateTime @default(now())
-  updatedAt DateTime
+  updatedAt DateTime @updatedAt
 
+  // Relationships
+  owner User @relation("DocumentOwner", fields: [userId], references: [id], onDelete: Cascade)
+
+  @@index([userId])
   @@index([createdAt])
+  @@index([updatedAt])
 }

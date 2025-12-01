@@ -2,7 +2,7 @@
 
 import { useState } from "react";
 import Link from "next/link";
-import { useAuth } from "../../providers/auth-provider";
+import { useAuth } from "../../../providers/auth-provider";
 
 export default function SignupPage() {
   const [email, setEmail] = useState("");

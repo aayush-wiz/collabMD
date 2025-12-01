@@ -9,14 +9,13 @@ import {
   useState,
   useCallback,
   type Dispatch,
-  type MutableRefObject,
   type ReactNode,
   type SetStateAction,
 } from "react";
 import { EditorView } from "@codemirror/view";
 import { undo, redo } from "@codemirror/commands";
-import { localDocs } from "../../lib/local-docs";
-import { onDocumentUpdate, onCursorUpdate, type CursorMovePayload } from "../../lib/realtime";
+import { documentApi } from "../../lib/api-client";
+import { useDocumentTitle } from "./document-title-context";
 
 export type ViewMode = "split" | "preview" | "editor";
 
@@ -25,29 +24,27 @@ interface EditorContextValue {
   setMarkdown: Dispatch<SetStateAction<string>>;
   viewMode: ViewMode;
   setViewMode: Dispatch<SetStateAction<ViewMode>>;
-  editorViewRef: MutableRefObject<EditorView | null>;
+  editorViewRef: { current: EditorView | null };
   executeAction: (actionId: string) => void;
   executeActionWithColor: (actionId: string, color: string) => void;
   insertHeading: (level: number) => void;
   documentId: string | null;
   setDocumentId: Dispatch<SetStateAction<string | null>>;
+  documentTitle: string | null;
   saveDocument: () => Promise<void>;
   isSaving: boolean;
   pendingSave: boolean;
-  remoteCursors: Record<
-    string,
-    {
-      from: number;
-      to: number;
-    }
-  >;
 }
 
 const EditorContext = createContext<EditorContextValue | null>(null);
 
 export const VIEW_MODES: { key: ViewMode; label: string; src: string }[] = [
   { key: "split", label: "Split Pane", src: "/icons/navbar/split-view.svg" },
-  { key: "preview", label: "Preview Only", src: "/icons/navbar/markdown-view.svg" },
+  {
+    key: "preview",
+    label: "Preview Only",
+    src: "/icons/navbar/markdown-view.svg",
+  },
   { key: "editor", label: "Editor Only", src: "/icons/navbar/edit-view.svg" },
 ];
 
@@ -95,67 +92,82 @@ const team = ["Lucy", "Mark", "Amy", "Brittany"];
 
 export function EditorProvider({ children }: { children: ReactNode }) {
   const [viewMode, setViewMode] = useState<ViewMode>("split");
-  const [markdown, setMarkdown] = useState(DEFAULT_MARKDOWN);
-  const [documentId, setDocumentId] = useState<string | null>(null);
+  const [markdown, setMarkdown] = useState("");
+  const [documentId, setDocumentIdState] = useState<string | null>(null);
   const [isSaving, setIsSaving] = useState(false);
   const [pendingSave, setPendingSave] = useState(false);
-  const [remoteCursors, setRemoteCursors] = useState<
-    Record<string, { from: number; to: number }>
-  >({});
   const editorViewRef = useRef<EditorView | null>(null);
+  
+  // Integrate with DocumentTitleProvider
+  const { documentTitle, setDocumentId: setTitleDocumentId, setDocumentTitle } = useDocumentTitle();
+  
+  // Sync documentId with DocumentTitleProvider
+  const setDocumentId = useCallback((id: SetStateAction<string | null>) => {
+    const newId = typeof id === 'function' ? id(documentId) : id;
+    setDocumentIdState(newId);
+    setTitleDocumentId(newId);
+  }, [setTitleDocumentId, documentId]);
 
-  function generateRandomTitle(): string {
-    const adjectives = ["Quiet", "Swift", "Bold", "Bright", "Neon", "Crimson", "Golden", "Icy", "Azure", "Witty"];
-    const nouns = ["Quokka", "Falcon", "Pixel", "Nova", "Echo", "Nimbus", "Voyage", "Pebble", "Beacon", "Comet"];
-    const a = adjectives[Math.floor(Math.random() * adjectives.length)];
-    const n = nouns[Math.floor(Math.random() * nouns.length)];
-    const suffix = Math.random().toString(36).slice(2, 6).toUpperCase();
-    return `Untitled ${a} ${n} ${suffix}`;
-  }
-
-  function hasAnyNonEmptyLine(text: string): boolean {
-    return text.split(/\r?\n/).some((line) => line.trim().length > 0);
-  }
-
-  const insertHeading = (level: number) => {
+  const insertHeading = useCallback((level: number) => {
     const view = editorViewRef.current;
     if (!view) return;
 
     const hashes = "#".repeat(level);
     insertAtLineStart(view, `${hashes} `);
-  };
+  }, []);
+
+  const isSavingRef = useRef(false);
+  const createdDocIdRef = useRef<string | null>(null);
 
   const saveDocument = useCallback(async () => {
-    if (isSaving) return;
-    
+    if (isSavingRef.current) return;
+
+    // Check if user is authenticated before attempting to save
+    const token =
+      typeof window !== "undefined" ? localStorage.getItem("token") : null;
+    if (!token) {
+      return;
+    }
+
+    const currentDocId = documentId || createdDocIdRef.current;
+    const trimmed = markdown.trim();
+
+    // If there's no content at all and no document exists, don't create
+    if (!trimmed && !currentDocId) {
+      return;
+    }
+
+    isSavingRef.current = true;
     setIsSaving(true);
+    
     try {
-      if (documentId) {
-        // Update existing document in localStorage
-        localDocs.update(documentId, markdown);
+      if (!currentDocId) {
+        // Create new document only if we haven't created one already
+        const created = await documentApi.create({
+          title: documentTitle || "Untitled",
+          content: markdown,
+        });
+
+        if (created?.id) {
+          createdDocIdRef.current = created.id;
+          setDocumentId(created.id);
+          if (created?.title) {
+            setDocumentTitle(created.title);
+          }
+        }
       } else {
-        // Create new document in localStorage
-        let nextContent = markdown;
-        if (!hasAnyNonEmptyLine(markdown)) {
-          const randomTitle = generateRandomTitle();
-          nextContent = `# ${randomTitle}\n\n`;
-          setMarkdown(nextContent);
-        }
-        const doc = localDocs.create(nextContent);
-        setDocumentId(doc.id);
-        // Update URL to reflect the new document ID
-        if (typeof window !== "undefined") {
-          window.history.replaceState(null, "", `/editor/${doc.id}`);
-        }
+        // Update existing document
+        await documentApi.update(currentDocId, { content: markdown });
       }
     } catch (error) {
       console.error("Error saving document:", error);
     } finally {
+      isSavingRef.current = false;
       setIsSaving(false);
     }
-  }, [documentId, markdown, isSaving]);
+  }, [documentId, markdown, documentTitle, setDocumentTitle, setDocumentId]);
 
-  const executeActionWithColor = (actionId: string, color: string) => {
+  const executeActionWithColor = useCallback((actionId: string, color: string) => {
     const view = editorViewRef.current;
     if (!view) return;
 
@@ -165,15 +177,20 @@ export function EditorProvider({ children }: { children: ReactNode }) {
 
     switch (actionId) {
       case "highlight":
-        wrapText(view, `<mark style="background-color: ${color};">`, "</mark>", selectedText);
+        wrapText(
+          view,
+          `<mark style="background-color: ${color};">`,
+          "</mark>",
+          selectedText
+        );
         break;
       case "quote":
         insertColoredQuote(view, color);
         break;
     }
-  };
+  }, []);
 
-  const executeAction = (actionId: string) => {
+  const executeAction = useCallback((actionId: string) => {
     const view = editorViewRef.current;
     if (!view) return;
 
@@ -234,7 +251,7 @@ export function EditorProvider({ children }: { children: ReactNode }) {
         view.focus();
         break;
     }
-  };
+  }, []);
 
   const value = useMemo<EditorContextValue>(
     () => ({
@@ -248,55 +265,52 @@ export function EditorProvider({ children }: { children: ReactNode }) {
       insertHeading,
       documentId,
       setDocumentId,
+      documentTitle,
       saveDocument,
       isSaving,
       pendingSave,
-      remoteCursors,
     }),
-    [markdown, viewMode, documentId, isSaving, pendingSave, saveDocument, remoteCursors]
+    [
+      markdown,
+      viewMode,
+      documentId,
+      documentTitle,
+      isSaving,
+      pendingSave,
+      saveDocument,
+      setDocumentId,
+      executeAction,
+      executeActionWithColor,
+      insertHeading,
+      editorViewRef
+    ]
   );
 
-  // Debounced autosave when markdown changes
+  // Debounced autosave when markdown changes.
+  // Creates a document the first time there is non-empty content,
+  // then updates it on subsequent edits.
   useEffect(() => {
-    // Only trigger when markdown changes; debounce by 800ms
+    const currentDocId = documentId || createdDocIdRef.current;
+    const trimmed = markdown.trim();
+
+    if (!currentDocId && !trimmed) {
+      // Nothing to save or create yet
+      setPendingSave(false);
+      return;
+    }
+
     setPendingSave(true);
+
+    // When creating a brand-new document, run the save a bit sooner so UX feels snappy.
+    const delay = currentDocId ? 800 : 400;
+
     const timer = setTimeout(async () => {
       await saveDocument();
       setPendingSave(false);
-    }, 800);
+    }, delay);
+
     return () => clearTimeout(timer);
-  }, [markdown, saveDocument]);
-
-  // Apply incoming document updates from other collaborators
-  useEffect(() => {
-    const unsubscribe = onDocumentUpdate((content) => {
-      setMarkdown((current) => {
-        if (current === content) return current;
-        return content;
-      });
-    });
-
-    return () => {
-      unsubscribe();
-    };
-  }, []);
-
-  // Track remote cursor positions per collaborator
-  useEffect(() => {
-    const unsubscribe = onCursorUpdate((payload: CursorMovePayload) => {
-      setRemoteCursors((prev) => ({
-        ...prev,
-        [payload.userId]: {
-          from: payload.from,
-          to: payload.to,
-        },
-      }));
-    });
-
-    return () => {
-      unsubscribe();
-    };
-  }, []);
+  }, [markdown, documentId, saveDocument]);
 
   return (
     <EditorContext.Provider value={value}>{children}</EditorContext.Provider>
@@ -356,7 +370,7 @@ function insertColoredQuote(view: EditorView, color: string) {
   const line = view.state.doc.lineAt(selection.from);
   const lineStart = line.from;
   const lineText = line.text;
-  
+
   // Check if line already starts with a blockquote marker
   const quoteMatch = lineText.match(/^>\s*/);
   if (quoteMatch) {
@@ -384,7 +398,7 @@ function insertLink(view: EditorView, selectedText: string) {
   const template = `[${linkText}](url)`;
   const urlStart = selection.from + linkText.length + 3; // Position after "]("
   const urlEnd = urlStart + 3; // Length of "url"
-  
+
   view.dispatch({
     changes: { from: selection.from, to: selection.to, insert: template },
     selection: { anchor: urlStart, head: urlEnd }, // Select "url" text

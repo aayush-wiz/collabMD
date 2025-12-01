@@ -1,7 +1,6 @@
 "use client";
 
 import { useEffect } from "react";
-import { EditorProvider } from "../components/editor/editor-context";
 import { ThemeProvider, useTheme } from "../providers/theme-provider";
 import { AuthProvider } from "../providers/auth-provider";
 
@@ -21,7 +20,7 @@ export function ClientLayout({ children }: { children: React.ReactNode }) {
     <AuthProvider>
       <ThemeProvider>
         <ThemeWrapper>
-          <EditorProvider>{children}</EditorProvider>
+          {children}
         </ThemeWrapper>
       </ThemeProvider>
     </AuthProvider>

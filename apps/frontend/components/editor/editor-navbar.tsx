@@ -1,6 +1,6 @@
 "use client";
 
-import { useEffect, useMemo, useState } from "react";
+import { useState, useEffect } from "react";
 import Image from "next/image";
 import { useRouter, usePathname } from "next/navigation";
 
@@ -9,7 +9,7 @@ import { cn } from "../../lib/utils";
 import { Tooltip } from "../ui/tooltip";
 import { useTheme } from "../../providers/theme-provider";
 import { DownloadModal } from "./download-modal";
-import { localDocs, summarize, setTitle as setContentTitle } from "../../lib/local-docs";
+import { useDocumentTitle } from "./document-title-context";
 
 export function EditorNavbar() {
   const {
@@ -18,21 +18,26 @@ export function EditorNavbar() {
     isSaving,
     markdown,
     documentId,
-    setMarkdown,
     pendingSave,
-    remoteCursors,
+    documentTitle,
   } = useEditorContext();
   const { theme, toggleTheme } = useTheme();
   const router = useRouter();
   const pathname = usePathname();
+  const { updateDocumentTitle } = useDocumentTitle();
   const [isDownloadModalOpen, setIsDownloadModalOpen] = useState(false);
-  const [titleInput, setTitleInput] = useState(() => summarize(markdown).title);
+  const [titleInput, setTitleInput] = useState(() => documentTitle || "Untitled");
+  
+  // Sync titleInput when documentTitle changes
+  useEffect(() => {
+    if (documentTitle !== null) {
+      setTitleInput(documentTitle);
+    } else {
+      setTitleInput("Untitled");
+    }
+  }, [documentTitle]);
 
   const isEditorRoute = pathname?.startsWith("/editor");
-
-  const collaboratorCount = useMemo(() => Object.keys(remoteCursors).length, [
-    remoteCursors,
-  ]);
 
   const colors =
     theme === "dark"
@@ -157,24 +162,25 @@ export function EditorNavbar() {
                 if (e.key === "Enter") {
                   (e.target as HTMLInputElement).blur();
                 } else if (e.key === "Escape") {
-                  // Revert to current derived title
-                  setTitleInput(summarize(markdown).title);
+                  // Revert to current document title
+                  setTitleInput(documentTitle || "Untitled");
                   (e.target as HTMLInputElement).blur();
                 }
               }}
-              onBlur={() => {
+              onBlur={async () => {
                 const next = titleInput.trim();
-                const current = summarize(markdown).title;
+                const current = documentTitle || "Untitled";
                 if (!next || next === current) {
                   setTitleInput(current);
                   return;
                 }
-                if (documentId) {
-                  const updated = localDocs.rename(documentId, next);
-                  setMarkdown(updated.content);
-                } else {
-                  const updatedContent = setContentTitle(markdown, next);
-                  setMarkdown(updatedContent);
+                // Update document title via API (does not modify markdown content)
+                try {
+                  await updateDocumentTitle(next);
+                } catch (error) {
+                  console.error("Error updating document title:", error);
+                  // Revert on error
+                  setTitleInput(current);
                 }
               }}
               aria-label="Rename document"
@@ -190,27 +196,6 @@ export function EditorNavbar() {
 
         {/* RIGHT: mirrored placeholders (same visual slots as left) so center uses flex/grid centering */}
         <div className="flex items-center gap-3 justify-end">
-          {/* collaborator presence */}
-          <div className="flex items-center gap-2 rounded-lg px-2 py-1">
-            <span
-              className="inline-flex h-2 w-2 rounded-full"
-              style={{
-                backgroundColor:
-                  collaboratorCount > 1 ? colors.accent : colors.textSub,
-              }}
-              aria-hidden="true"
-            />
-            <span
-              className="text-xs font-medium"
-              style={{ color: colors.textSub }}
-            >
-              {collaboratorCount === 0
-                ? "Just you here"
-                : collaboratorCount === 1
-                ? "1 collaborator"
-                : `${collaboratorCount} collaborators`}
-            </span>
-          </div>
           {/* placeholder group that mirrors view-mode buttons count */}
           <div className="flex items-center gap-1 rounded-lg p-1">
             <Tooltip

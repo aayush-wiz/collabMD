@@ -2,8 +2,7 @@
 
 import { useRouter } from "next/navigation";
 import { useTheme } from "../../providers/theme-provider";
-import { useState } from "react";
-import { localDocs } from "../../lib/local-docs";
+import { useState, useEffect } from "react";
 
 interface DocumentCardProps {
   id: string;
@@ -28,6 +27,13 @@ export function DocumentCard({
   const [isRenaming, setIsRenaming] = useState(false);
   const [draftTitle, setDraftTitle] = useState(title);
 
+  // Sync draftTitle when title prop changes (after successful rename)
+  useEffect(() => {
+    if (!isRenaming) {
+      setDraftTitle(title);
+    }
+  }, [title, isRenaming]);
+
   const handleClick = () => {
     router.push(`/editor/${id}`);
   };
@@ -48,15 +54,21 @@ export function DocumentCard({
     setIsRenaming(true);
   };
 
-  const commitRename = () => {
+  const commitRename = async () => {
     const next = draftTitle.trim();
     if (!next || next === title) {
       setIsRenaming(false);
       return;
     }
-    const updated = localDocs.rename(id, next);
+    // Call onRename callback which handles API update for backend documents
     if (onRename) {
-      onRename(id, updated.title);
+      try {
+        await onRename(id, next);
+      } catch (error) {
+        console.error("Error renaming document:", error);
+        // Revert on error
+        setDraftTitle(title);
+      }
     }
     setIsRenaming(false);
   };

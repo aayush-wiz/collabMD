@@ -5,29 +5,34 @@ import { useParams } from "next/navigation";
 import { Workspace } from "../../../components/editor/workspace";
 import { useEditorContext } from "../../../components/editor/editor-context";
 import { useTheme } from "../../../providers/theme-provider";
-import { localDocs } from "../../../lib/local-docs";
-import { joinDocument, leaveDocument } from "../../../lib/realtime";
+import { documentApi } from "../../../lib/api-client";
+import { useDocumentTitle } from "../../../components/editor/document-title-context";
 
 export default function EditorPage() {
   const params = useParams();
   const { setMarkdown, setDocumentId } = useEditorContext();
+  const { setDocumentTitle } = useDocumentTitle();
   const { theme } = useTheme();
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
 
   useEffect(() => {
-    const fetchDocument = () => {
+    const fetchDocument = async () => {
       try {
         const id = String(params.id);
-        const doc = localDocs.get(id);
+        const doc = await documentApi.get(id);
         if (doc) {
           setMarkdown(doc.content);
           setDocumentId(doc.id);
+          // Set document title from API response
+          if (doc.title) {
+            setDocumentTitle(doc.title);
+          }
         } else {
           setError("Document not found");
         }
-      } catch (err) {
-        setError("Failed to load document");
+      } catch (err: any) {
+        setError(err.message || "Failed to load document");
         console.error("Error loading document:", err);
       } finally {
         setLoading(false);
@@ -37,18 +42,7 @@ export default function EditorPage() {
     if (params.id) {
       fetchDocument();
     }
-  }, [params.id, setMarkdown, setDocumentId]);
-
-  useEffect(() => {
-    const id = params.id ? String(params.id) : null;
-    if (!id) return;
-
-    joinDocument(id);
-
-    return () => {
-      leaveDocument(id);
-    };
-  }, [params.id]);
+  }, [params.id, setMarkdown, setDocumentId, setDocumentTitle]);
 
   if (loading) {
     return (
@@ -80,4 +74,3 @@ export default function EditorPage() {
 
   return <Workspace />;
 }
-

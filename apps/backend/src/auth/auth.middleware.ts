@@ -14,12 +14,14 @@ export const authenticateToken = (
   const token = authHeader && authHeader.split(" ")[1];
 
   if (!token) {
-    return res.sendStatus(401);
+    res.sendStatus(401);
+    return;
   }
 
   jwt.verify(token, process.env.JWT_SECRET!, (err: any, user: any) => {
     if (err) {
-      return res.sendStatus(403);
+      res.sendStatus(403);
+      return;
     }
     req.user = user;
     next();

@@ -3,13 +3,22 @@
 import { useRouter } from "next/navigation";
 import { useTheme } from "../../providers/theme-provider";
 import Image from "next/image";
+import { useAuth } from "../../providers/auth-provider";
 
 export function WorkspaceHeader() {
   const router = useRouter();
   const { theme, toggleTheme } = useTheme();
+  const { user, logout } = useAuth();
 
   const handleNewDocument = () => {
     router.push("/editor/new");
+  };
+  const handleAuth = () => {
+    if (user) {
+      logout();
+    } else {
+      router.push("/signin");
+    }
   };
 
   return (
@@ -64,20 +73,38 @@ export function WorkspaceHeader() {
           />
         </button>
 
+        {user && (
+          <button
+            onClick={handleNewDocument}
+            className="rounded-lg px-4 py-2 font-medium transition-all text-white"
+            style={{
+              backgroundColor: theme === "dark" ? "#4DA6FF" : "#007ACC",
+            }}
+            onMouseEnter={(e) => {
+              e.currentTarget.style.backgroundColor = theme === "dark" ? "#3D8CE6" : "#005A9E";
+            }}
+            onMouseLeave={(e) => {
+              e.currentTarget.style.backgroundColor = theme === "dark" ? "#4DA6FF" : "#007ACC";
+            }}
+          >
+            + New Document
+          </button>
+        )}
+
         <button
-          onClick={handleNewDocument}
+          onClick={handleAuth}
           className="rounded-lg px-4 py-2 font-medium transition-all text-white"
           style={{
-            backgroundColor: theme === "dark" ? "#4DA6FF" : "#007ACC",
+            backgroundColor: theme === "dark" ? "#6B7280" : "#374151",
           }}
           onMouseEnter={(e) => {
-            e.currentTarget.style.backgroundColor = theme === "dark" ? "#3D8CE6" : "#005A9E";
+            e.currentTarget.style.backgroundColor = theme === "dark" ? "#4B5563" : "#1F2937";
           }}
           onMouseLeave={(e) => {
-            e.currentTarget.style.backgroundColor = theme === "dark" ? "#4DA6FF" : "#007ACC";
+            e.currentTarget.style.backgroundColor = theme === "dark" ? "#6B7280" : "#374151";
           }}
         >
-          + New Document
+          {user ? "Logout" : "Login"}
         </button>
       </div>
     </header>
