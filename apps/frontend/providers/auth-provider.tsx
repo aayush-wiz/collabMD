@@ -2,6 +2,7 @@
 
 import React, { createContext, useContext, useEffect, useState } from "react";
 import { useRouter } from "next/navigation";
+import { API_BASE_URL } from "../lib/config";
 
 interface User {
   id: string;
@@ -33,9 +34,19 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
     setIsLoading(false);
   }, []);
 
+  useEffect(() => {
+    const onApiLogout = () => {
+      setUser(null);
+      router.push("/signin");
+    };
+
+    window.addEventListener("auth:logout", onApiLogout);
+    return () => window.removeEventListener("auth:logout", onApiLogout);
+  }, [router]);
+
   const login = async (email: string, password: string) => {
     try {
-      const res = await fetch("http://localhost:3001/auth/signin", {
+      const res = await fetch(`${API_BASE_URL}/auth/signin`, {
         method: "POST",
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify({ email, password }),
@@ -59,7 +70,7 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
 
   const register = async (email: string, password: string, name?: string) => {
     try {
-      const res = await fetch("http://localhost:3001/auth/signup", {
+      const res = await fetch(`${API_BASE_URL}/auth/signup`, {
         method: "POST",
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify({ email, password, name }),

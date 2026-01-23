@@ -1,6 +1,12 @@
 import { Router, Request, Response } from "express";
 import prisma from "../prisma/client";
 import { authenticateToken, AuthRequest } from "../auth/auth.middleware";
+import {
+  parseGitHubUrl,
+  getRepositoryInfo,
+  getRepositoryStructure,
+} from "../services/github.service";
+import { generateMarkdownFromRepo } from "../services/openai.service";
 
 const router = Router();
 
@@ -193,6 +199,95 @@ router.delete(
       res.json({ message: "Document deleted successfully" });
     } catch (error) {
       console.error("Error deleting document:", error);
+      res.status(500).json({ error: "Internal server error" });
+    }
+  }
+);
+
+// POST /documents/generate-from-github - Generate markdown from GitHub repo
+router.post(
+  "/generate-from-github",
+  authenticateToken,
+  async (req: AuthRequest, res: Response) => {
+    try {
+      const userId = req.user?.userId;
+      const { githubUrl } = req.body;
+
+      if (!userId) {
+        return res.status(401).json({ error: "Unauthorized" });
+      }
+
+      if (!githubUrl) {
+        return res.status(400).json({ error: "GitHub URL is required" });
+      }
+
+      // Parse GitHub URL
+      let owner: string, repo: string;
+      try {
+        const parsed = parseGitHubUrl(githubUrl);
+        owner = parsed.owner;
+        repo = parsed.repo;
+      } catch (error: any) {
+        return res.status(400).json({ error: error.message });
+      }
+
+      // Fetch repository information
+      let repoInfo;
+      try {
+        repoInfo = await getRepositoryInfo(owner, repo);
+      } catch (error: any) {
+        if (error.message.includes("not found")) {
+          return res.status(404).json({ error: error.message });
+        }
+        return res.status(500).json({ error: error.message });
+      }
+
+      // Fetch repository structure
+      let structure;
+      try {
+        structure = await getRepositoryStructure(
+          owner,
+          repo,
+          repoInfo.defaultBranch
+        );
+      } catch (error: any) {
+        return res
+          .status(500)
+          .json({ error: `Failed to fetch repository structure: ${error.message}` });
+      }
+
+      // Generate markdown using OpenAI
+      let generatedMarkdown;
+      try {
+        generatedMarkdown = await generateMarkdownFromRepo(repoInfo, structure);
+      } catch (error: any) {
+        if (error.message.includes("rate limit")) {
+          return res.status(429).json({ error: error.message });
+        }
+        return res
+          .status(500)
+          .json({ error: `Failed to generate markdown: ${error.message}` });
+      }
+
+      // Create document in database
+      const title = `${owner}/${repo} - Documentation`;
+      const document = await prisma.document.create({
+        data: {
+          title,
+          content: generatedMarkdown,
+          userId,
+          isPublic: false,
+        },
+        include: {
+          owner: {
+            select: { id: true, name: true, email: true },
+          },
+        },
+      });
+
+      res.status(201).json(document);
+    } catch (error) {
+      console.error("Error generating document from GitHub:", error);
       res.status(500).json({ error: "Internal server error" });
     }
   }

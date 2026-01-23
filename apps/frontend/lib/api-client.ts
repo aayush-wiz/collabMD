@@ -1,4 +1,4 @@
-const API_BASE_URL = process.env.NEXT_PUBLIC_API_URL || "http://localhost:3001";
+import { API_BASE_URL } from "./config";
 
 interface FetchOptions extends RequestInit {
   headers?: Record<string, string>;
@@ -32,6 +32,56 @@ export async function apiClient(
   return response;
 }
 
+async function readErrorMessage(response: Response): Promise<string | null> {
+  // Try to extract a useful message from JSON or text responses.
+  try {
+    const contentType = response.headers.get("content-type") || "";
+    if (contentType.includes("application/json")) {
+      const data = await response.json().catch(() => null);
+      if (data && typeof data === "object") {
+        // Common backend shapes: { error: string } or { message: string }
+        const maybeError = (data as any).error ?? (data as any).message;
+        if (typeof maybeError === "string" && maybeError.trim()) {
+          return maybeError.trim();
+        }
+      }
+      return null;
+    }
+
+    const text = await response.text().catch(() => "");
+    const trimmed = text.trim();
+    return trimmed ? trimmed : null;
+  } catch {
+    return null;
+  }
+}
+
+export async function throwIfNotOk(
+  response: Response,
+  fallbackMessage: string
+) {
+  if (response.ok) return;
+
+  // If auth failed, clear any cached auth so the UI can recover cleanly.
+  if (
+    typeof window !== "undefined" &&
+    (response.status === 401 || response.status === 403)
+  ) {
+    localStorage.removeItem("token");
+    localStorage.removeItem("user");
+    window.dispatchEvent(new Event("auth:logout"));
+  }
+
+  const serverMessage = await readErrorMessage(response);
+  const message =
+    serverMessage ||
+    (response.status === 401 || response.status === 403
+      ? "Your session has expired. Please sign in again."
+      : fallbackMessage);
+
+  throw new Error(`${message} (HTTP ${response.status})`);
+}
+
 // Helper functions for common HTTP methods
 export const api = {
   get: (endpoint: string, options?: FetchOptions) =>
@@ -59,13 +109,13 @@ export const api = {
 export const documentApi = {
   list: async () => {
     const response = await api.get("/documents");
-    if (!response.ok) throw new Error("Failed to fetch documents");
+    await throwIfNotOk(response, "Failed to fetch documents");
     return response.json();
   },
 
   get: async (id: string) => {
     const response = await api.get(`/documents/${id}`);
-    if (!response.ok) throw new Error("Failed to fetch document");
+    await throwIfNotOk(response, "Failed to fetch document");
     return response.json();
   },
 
@@ -75,7 +125,7 @@ export const documentApi = {
     isPublic?: boolean;
   }) => {
     const response = await api.post("/documents", data);
-    if (!response.ok) throw new Error("Failed to create document");
+    await throwIfNotOk(response, "Failed to create document");
     return response.json();
   },
 
@@ -88,18 +138,21 @@ export const documentApi = {
     }
   ) => {
     const response = await api.put(`/documents/${id}`, data);
-    if (!response.ok) throw new Error("Failed to update document");
+    await throwIfNotOk(response, "Failed to update document");
     return response.json();
   },
 
   delete: async (id: string) => {
     const response = await api.delete(`/documents/${id}`);
-    if (!response.ok) {
-      const errorData = await response.json().catch(() => ({}));
-      throw new Error(
-        errorData.error || `Failed to delete document: ${response.statusText}`
-      );
-    }
+    await throwIfNotOk(response, "Failed to delete document");
+    return response.json();
+  },
+
+  generateFromGitHub: async (githubUrl: string) => {
+    const response = await api.post("/documents/generate-from-github", {
+      githubUrl,
+    });
+    await throwIfNotOk(response, "Failed to generate document from GitHub");
     return response.json();
   },
 };

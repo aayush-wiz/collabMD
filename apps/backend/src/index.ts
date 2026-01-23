@@ -1,8 +1,10 @@
 import express from "express";
 import cors from "cors";
-import dotenv from "dotenv";
+import prisma from "./prisma/client";
+import { loadEnv, requireEnvVars } from "./env";
 
-dotenv.config();
+loadEnv();
+requireEnvVars(["DATABASE_URL", "JWT_SECRET", "OPENAI_API_KEY"]);
 
 const app = express();
 const PORT = process.env.PORT || 3001;
@@ -20,6 +22,27 @@ app.get("/", (req, res) => {
   res.send("Hello from CollabMD Backend!");
 });
 
-app.listen(PORT, () => {
-  console.log(`Server is running on http://localhost:${PORT}`);
-});
+async function bootstrap() {
+  try {
+    await prisma.$connect();
+    // eslint-disable-next-line no-console
+    console.log("Connected to database");
+  } catch (error) {
+    // eslint-disable-next-line no-console
+    console.error("Failed to connect to database.");
+    // eslint-disable-next-line no-console
+    console.error(
+      "Check that your DATABASE_URL is correct and your Postgres server is reachable."
+    );
+    // eslint-disable-next-line no-console
+    console.error(error);
+    process.exit(1);
+  }
+
+  app.listen(PORT, () => {
+    // eslint-disable-next-line no-console
+    console.log(`Server is running on http://localhost:${PORT}`);
+  });
+}
+
+bootstrap();

@@ -14,14 +14,18 @@ export const authenticateToken = (
   const token = authHeader && authHeader.split(" ")[1];
 
   if (!token) {
-    res.sendStatus(401);
-    return;
+    return res.status(401).json({ error: "Unauthorized" });
   }
 
-  jwt.verify(token, process.env.JWT_SECRET!, (err: any, user: any) => {
+  const secret = process.env.JWT_SECRET;
+  if (!secret) {
+    // Misconfiguration - better than throwing and crashing the process
+    return res.status(500).json({ error: "Server misconfigured" });
+  }
+
+  jwt.verify(token, secret, (err: any, user: any) => {
     if (err) {
-      res.sendStatus(403);
-      return;
+      return res.status(403).json({ error: "Invalid or expired token" });
     }
     req.user = user;
     next();

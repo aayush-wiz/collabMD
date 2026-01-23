@@ -3,10 +3,12 @@
 import { useEffect, useState } from "react";
 import { DocumentCard } from "../../components/workspace/document-card";
 import { WorkspaceHeader } from "../../components/workspace/workspace-header";
+import { GitHubImportModal } from "../../components/workspace/github-import-modal";
 import { useTheme } from "../../providers/theme-provider";
 import { documentApi } from "../../lib/api-client";
 import Link from "next/link";
 import { useAuth } from "../../providers/auth-provider";
+import { useRouter } from "next/navigation";
 
 interface Document {
   id: string;
@@ -20,8 +22,10 @@ export default function WorkspacePage() {
   const [documents, setDocuments] = useState<Document[]>([]);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
+  const [isGitHubModalOpen, setIsGitHubModalOpen] = useState(false);
   const { theme } = useTheme();
   const { user, isLoading } = useAuth();
+  const router = useRouter();
 
   useEffect(() => {
     if (!user) {
@@ -68,6 +72,13 @@ export default function WorkspacePage() {
     }
   };
 
+  const handleGitHubImportSuccess = async (documentId: string) => {
+    // Refresh the documents list
+    await fetchDocuments();
+    // Navigate to the newly created document
+    router.push(`/editor/${documentId}`);
+  };
+
   return (
     <main
       className="flex h-full flex-col"
@@ -75,7 +86,12 @@ export default function WorkspacePage() {
         backgroundColor: theme === "dark" ? "#111111" : "#FAFAFA",
       }}
     >
-      <WorkspaceHeader />
+      <WorkspaceHeader onOpenGitHubImport={() => setIsGitHubModalOpen(true)} />
+      <GitHubImportModal
+        isOpen={isGitHubModalOpen}
+        onClose={() => setIsGitHubModalOpen(false)}
+        onSuccess={handleGitHubImportSuccess}
+      />
 
       <div className="flex-1 overflow-y-auto px-8 py-6">
         {!user && !isLoading && (
