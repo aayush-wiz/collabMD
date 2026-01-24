@@ -1,8 +1,8 @@
-## CollabMD Frontend
+# CollabMD Frontend
 
 Next.js 16 application styled with Tailwind CSS. This app lives at `apps/frontend` inside the Turborepo.
 
-### Getting Started
+## Getting Started
 
 From the repository root:
 
@@ -37,20 +37,55 @@ npm run dev --workspace frontend
 
 ### Directory Highlights
 
-- `app/` – App Router pages, layouts, and server components.
-- `app/page.tsx` – Markdown editor workspace with live preview and layout toggles.
-- `app/globals.css` – Tailwind entry point.
-- `app/editor/*` – Editor routes (new document and by id).
-- `components/` – CollabMD UI building blocks (editor panes, toolbars, etc).
-- `public/` – Icons and assets used by the editor and navbar.
-- `tailwind.config.ts` – Tailwind setup scanning shared UI components.
+#### Team 3 (Frontend Integration & Features)
+
+- `app/` – App Router pages, layouts, and routing (Team 3)
+  - `app/(auth)/` – Sign-in and sign-up pages
+  - `app/workspace/` – Document workspace page
+  - `app/editor/` – Editor page routes (new document and by id)
+  - `app/page.tsx` – Home page redirect
+  - `app/globals.css` – Tailwind entry point
+- `components/workspace/` – Workspace UI components (document cards, header, GitHub import)
+- `providers/` – Authentication and theme context providers
+- `lib/` – API client, utilities, and configuration
+- `tailwind.config.ts` – Tailwind setup scanning shared UI components
+
+#### Team 2 (Frontend Core & Editor)
+
+- `components/editor/` – Core editor components (Team 2)
+  - `editor-pane.tsx` – CodeMirror markdown editor
+  - `preview-pane.tsx` – Live markdown preview
+  - `editor-toolbar.tsx` – Formatting toolbar
+  - `markdown-components.tsx` – Custom markdown renderers
+  - `editor-context.tsx` – Editor state management
+  - `editor-navbar.tsx` – Editor navigation and controls
+  - `download-modal.tsx` – PDF export functionality
+  - `workspace.tsx` – Editor layout component
+
+#### Shared
+
+- `public/` – Icons and assets used by the editor and navbar
+- `components/ui/` – Reusable UI components
 
 ### Features
 
-- Split/preview/editor layout toggles in the navbar.
-- GitHub-flavored markdown rendering (tables, task lists, code blocks).
-- Toolbar actions for common markdown formatting.
-- Download/export modal for saving content.
+#### Editor Features (Team 2)
+
+- Split/preview/editor layout toggles in the navbar
+- GitHub-flavored markdown rendering (tables, task lists, code blocks)
+- Toolbar actions for common markdown formatting
+- Auto-save functionality with debouncing
+- PDF export modal for saving content
+- Real-time markdown preview with syntax highlighting
+
+#### Application Features (Team 3)
+
+- User authentication (sign-in/sign-up pages)
+- Document workspace with listing and management
+- GitHub repository import functionality
+- Theme switching (dark/light mode)
+- Protected routes and session management
+- Responsive design across all pages
 
 ### Styling
 
